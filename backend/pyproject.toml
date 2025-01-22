@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["Vinskao <tianyikao@gmail.com>"]
+package-mode = false  # Set to false for dependency management only
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django = "^5.1.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
