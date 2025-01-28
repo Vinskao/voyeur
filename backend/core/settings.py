@@ -26,6 +26,7 @@ SECRET_KEY = 'django-insecure-jrphfv$3t-&%_n!za_88w+o_-)k+asxqe&j^xzq14c*z2x03k6
 DEBUG = True
 
 ALLOWED_HOSTS = []
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Application definition
@@ -37,19 +38,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',  # REST framework
-    'corsheaders',     # CORS headers
-    'words',           # Your custom app
+    'rest_framework',  
+    'corsheaders',   
+    'voyeur',
+    'channels',
 ]
 
-CORS_ALLOW_ORIGINS = [
-    'http://localhost:5173',  # Allow requests from this React app
+CORS_ALLOWED_ORIGINS = [
+    "http://0.0.0.0:8080",
+    "http://127.0.0.1:8080",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',  # Session middleware
-    'corsheaders.middleware.CorsMiddleware',                # CORS middleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',          
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -77,10 +80,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+# 指定 ASGI 應用程序
+ASGI_APPLICATION = 'core.asgi.application'
+
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',

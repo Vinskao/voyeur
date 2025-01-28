@@ -10,7 +10,7 @@ class MetricsListener:
     def on_message(self, frame):
         print(f"Received message: {frame.body}")
 def connect_to_stomp():
-    conn = Connection([("localhost", 8080)])
+    conn = Connection([("0.0.0.0", 8080)])
     conn.set_listener('', MetricsListener())
     conn.connect(wait=True)
     
