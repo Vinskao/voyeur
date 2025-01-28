@@ -1,26 +1,32 @@
-# 项目名称
+# 專案名稱
 
-## 简介
-简要介绍项目的目的和功能。
+## 簡介
+簡要介紹專案的目的和功能。
 
-## 安装
+## 安裝
 
-### 使用Poetry安装
-确保您已经安装了[Poetry](https://python-poetry.org/)，然后运行以下命令来安装项目依赖：
+### 使用Poetry安裝
+確保您已經安裝了[Poetry](https://python-poetry.org/)，然後運行以下命令來安裝專案依賴：
 
 ```bash
 pip install poetry
 poetry install
+python3 manage.py runserver 8000
 ```
 
 ## 使用方法
-提供一些基本的使用示例或命令，帮助用户快速上手。
+提供一些基本的使用示例或命令，幫助用戶快速上手。
 
-## 贡献
-如果您想为本项目做出贡献，请遵循以下步骤：
+## WebSocket 客戶端流程
+以下是作為 WebSocket 客戶端的基本流程：
 
-1. Fork本仓库
-2. 创建您的功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开一个Pull Request
+1. 導入 WebSocket 庫
+2. 創建 WebSocket 連接
+3. 發送和接收消息
+4. 關閉連接
+
+### 技術細節
+- **WebSocket 協議**：WebSocket 是一種在單個 TCP 連接上進行全雙工通訊的協議，適合需要即時數據傳輸的應用。
+- **連接建立**：使用 `websocket` 庫的 `WebSocketApp` 類來創建連接，並指定 WebSocket 伺服器的 URL。
+- **事件處理**：可以定義多個事件處理函數，例如 `on_message`、`on_error`、`on_close` 和 `on_open`，以處理不同的事件。
+- **持續運行**：使用 `run_forever()` 方法保持連接持續運行，直到手動關閉。

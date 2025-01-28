@@ -1,22 +1,26 @@
 import asyncio
 import logging
-from stomp import Connection
+from stomp import Connection, ConnectionListener
 
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-class MetricsListener:
+class MetricsListener(ConnectionListener):
+    def on_open(self, frame):
+        print("Connected to STOMP broker")
+
     def on_message(self, frame):
         print(f"Received message: {frame.body}")
+            
 def connect_to_stomp():
-    conn = Connection([("0.0.0.0", 8080)])
-    conn.set_listener('', MetricsListener())
+    conn = Connection([("localhost", 8080)])
+    listener = MetricsListener()
+    conn.set_listener('', listener )
     conn.connect(wait=True)
     
-    conn.subscribe(destination="/tymb/metrics", id="1", ack="auto")
-    
-    print("Subscribed to /tymb/metrics")
+    conn.subscribe(destination="/topic/metrics", id="1", ack="auto")
+    print("Subscribed to /topic/metrics")
     
     try:            
         while True:

@@ -12,7 +12,7 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter([
-            path("tymb/metrics", MetricsConsumer.as_asgi()),
+            path("ws/metrics/", MetricsConsumer.as_asgi()),
         ])
     ),
 })

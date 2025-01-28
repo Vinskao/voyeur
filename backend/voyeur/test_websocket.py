@@ -25,7 +25,7 @@ def on_error(ws, error):
     print("Error:", error)
 
 def connect_metrics():
-    ws_url = "ws://0.0.0.0:8080/tymb/metrics"
+    ws_url = "ws://127.0.0.1:8080/tymb/metrics"
     ws = WebSocketApp(
         ws_url,
         on_open=on_open,
@@ -33,7 +33,9 @@ def connect_metrics():
         on_close=on_close,
         on_error=on_error,
         header={
-            "Origin": "http://0.0.0.0:8080",
+            "Origin": "http://127.0.0.1:8000",
+            "Upgrade": "websocket",
+            "Connection": "Upgrade"
         }
     )
     ws.run_forever()
