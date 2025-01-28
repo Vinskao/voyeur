@@ -1,7 +1,5 @@
-import asyncio
 import logging
 from stomp import Connection
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -9,14 +7,19 @@ logging.basicConfig(level=logging.INFO)
 class MetricsListener:
     def on_message(self, frame):
         print(f"Received message: {frame.body}")
-def connect_to_stomp():
+
+def test_stomp():
     conn = Connection([("localhost", 8080)])
     conn.set_listener('', MetricsListener())
-    conn.connect(wait=True)
+    conn.connect(wait=True, headers={
+        "Authorization": "Bearer your_token",  # If authentication is needed
+        "Custom-Header": "custom_value"        # Replace with any required headers
+    })
     
-    conn.subscribe(destination="/tymb/metrics", id="1", ack="auto")
+    # Subscribe to the /topic/metrics
+    conn.subscribe(destination="/topic/metrics", id="1", ack="auto")
     
-    print("Subscribed to /tymb/metrics")
+    print("Subscribed to /topic/metrics")
     
     try:            
         while True:
@@ -25,4 +28,4 @@ def connect_to_stomp():
         conn.disconnect()
 
 if __name__ == "__main__":
-    connect_to_stomp()
+    test_stomp()
