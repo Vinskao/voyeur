@@ -1,17 +1,18 @@
 [tool.poetry]
-name = "backend"
+name = "voyeur"
 version = "0.1.0"
-description = ""
-authors = ["Vinskao <tianyikao@gmail.com>"]
-package-mode = false  # Set to false for dependency management only
+description = "A Django project for voyeur service"
+authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-django = "^5.1.5"
-django-cors-headers = "^4.6.0"
-channels = "^4.2.0"
-djangorestframework = "^3.15.2"
+python = ">=3.10,<4.0"
+Django = "^5.1.5"
+djangorestframework = "^3.14.0"
+channels = "^4.0.0"
+stomp-py = "^7.0.0"
+pymongo = "^4.0.0"
+django-cors-headers = "^3.13.0"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
