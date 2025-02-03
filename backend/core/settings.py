@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'voyeur',
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [

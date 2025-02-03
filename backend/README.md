@@ -14,6 +14,7 @@ poetry install
 python3 -m voyeur.connect_metrics
 python3 manage.py runserver
 poetry run python3 manage.py runserver
+poetry run python manage.py runserver
 ```
 
 ## 使用方法

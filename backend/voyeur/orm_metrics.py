@@ -2,7 +2,6 @@ import os
 import time
 import pymongo
 import logging
-from flask import Flask, jsonify
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (includes sensitive data like MONGO_URI)
@@ -109,28 +108,3 @@ def run_orm_metrics():
         for doc in documents:
             logger.info(doc)
         time.sleep(30)
-
-# ---------------------------------------------------------------------------
-# Flask API for serving metrics from MongoDB
-# ---------------------------------------------------------------------------
-app = Flask(__name__)
-
-@app.route('/metrics', methods=['GET'])
-def get_metrics():
-    """
-    Flask API endpoint that returns the latest 100 documents from the `ty_backend_metrics` collection.
-    Converts ObjectId values to strings for JSON serialization.
-    """
-    database_name = "voyeur"
-    collection_name = "ty_backend_metrics"
-    orm = MongoORM(database_name, collection_name)
-    docs = orm.select_all()
-
-    # Convert ObjectId to string for serialization
-    for doc in docs:
-        if '_id' in doc:
-            doc['_id'] = str(doc['_id'])
-    return jsonify(docs)
-
-if __name__ == '__main__':
-    app.run(debug=True)
