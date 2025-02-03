@@ -20,18 +20,18 @@ collection = db['ty_backend_metrics']
 
 def store_message_in_mongo(message):
     """將接收到的訊息存入 MongoDB。"""
-    logger.info("開始處理訊息")
+    # logger.info("開始處理訊息")
     try:
         # 將 JSON 字符串轉換為字典
-        logger.info("嘗試將訊息轉換為字典")
+        # logger.info("嘗試將訊息轉換為字典")
         data = json.loads(message)
-        logger.info(f"成功轉換訊息: {data}")
+        # logger.info(f"成功轉換訊息: {data}")
         
         # 添加 createdAt 字段
         data['createdAt'] = datetime.utcnow()
         
         # 插入數據到 MongoDB
-        logger.info("嘗試將數據插入 MongoDB")
+        # logger.info("嘗試將數據插入 MongoDB")
         collection.insert_one(data)
         logger.info("成功將訊息存入 MongoDB")
     except json.JSONDecodeError as e:
