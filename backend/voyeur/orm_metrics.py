@@ -16,6 +16,10 @@ if not mongo_uri:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Import Django HTTP utilities
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+
 class MongoORM:
     """
     A simple ORM for interacting with MongoDB.
@@ -94,17 +98,37 @@ class MongoORM:
         logger.info("執行刪除操作 (delete)。")
         return self.collection.delete_many(query_filter)
 
-def run_orm_metrics():
+@require_GET
+def get_orm_metrics_view(request):
+    _ = request  # Explicitly mark the request as used (unused in the function)
     """
-    Periodically query the database every 30 seconds and log the latest 100 documents.
-    This function demonstrates how you might run continuous database metrics logging.
+    HTTP GET endpoint that queries the 'ty_backend_metrics' collection
+    and returns the latest 100 documents as a JSON response.
     """
+    logger.info("收到 GET 請求，開始查詢最新 100 個文件。")
     database_name = 'voyeur'
     collection_name = 'ty_backend_metrics'
     orm = MongoORM(database_name, collection_name)
-    while True:
-        documents = orm.select_all()
-        logger.info("所有文件:")
-        for doc in documents:
-            logger.info(doc)
-        time.sleep(30)
+    documents = orm.select_all()
+
+    # Convert any special types (e.g., ObjectId) to a JSON-serializable format.
+    for doc in documents:
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+
+    return JsonResponse({"documents": documents})
+
+# def run_orm_metrics():
+#     """
+#     Periodically query the database every 30 seconds and log the latest 100 documents.
+#     This function demonstrates how you might run continuous database metrics logging.
+#     """
+#     database_name = 'voyeur'
+#     collection_name = 'ty_backend_metrics'
+#     orm = MongoORM(database_name, collection_name)
+#     while True:
+#         documents = orm.select_all()
+#         logger.info("所有文件:")
+#         for doc in documents:
+#             logger.info(doc)
+#         time.sleep(30)
