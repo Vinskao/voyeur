@@ -1,43 +1,77 @@
 from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from django.http import JsonResponse, HttpResponse
+import datetime
 import logging
-from voyeur.orm_metrics import MongoORM
+import platform
+from voyeur.orm_metrics import MongoORM  # Ensure MongoORM is defined in voyeur/orm_metrics.py
 
 logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 def hello(request):
-    name = request.GET.get('name', 'guest')
-    data = {
-        'name': name,
-        'message': f"Hello {name}, your first API endpoint has been created successfully!"
-    }
-    return Response(data)
+    """
+    Return a simple "Hello, World!" message.
+    """
+    return HttpResponse("Hello, World!")
 
 @api_view(['GET'])
 def metrics(request):
     """
-    取得最新100筆文件，並回傳 JSON 格式的結果
+    Return some basic system metrics.
     """
-    try:
-        database_name = 'voyeur'
-        collection_name = 'ty_backend_metrics'
-        orm = MongoORM(database_name, collection_name)
-        documents = orm.select_all()  # 取得文件列表
-
-        # ObjectId 無法直接序列化，轉換成 str
-        for doc in documents:
-            if '_id' in doc:
-                doc['_id'] = str(doc['_id'])
-        return Response(documents)
-    except Exception as e:
-        logger.error("Error fetching metrics: %s", e)
-        return Response({'error': str(e)}, status=500)
+    data = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "platform": platform.system(),
+        "release": platform.release(),
+    }
+    return JsonResponse(data)
 
 @api_view(['GET'])
 def server_info(request):
     """
-    回傳簡單的 server info 資訊
+    Return server information.
     """
-    host = request.get_host()
-    return Response({'server_info': f"Server is running on: {host}"}) 
+    data = {
+        "python_version": platform.python_version(),
+        "os": platform.platform(),
+        "processor": platform.processor(),
+        "time": datetime.datetime.now().isoformat(),
+    }
+    return JsonResponse(data)
+
+@api_view(['GET'])
+def orm_metrics_view(request):
+    """
+    HTTP GET endpoint for retrieving ORM metrics from the 'ty_backend_metrics' collection.
+    """
+    database_name = 'voyeur'
+    collection_name = 'ty_backend_metrics'
+    orm = MongoORM(database_name, collection_name)
+    documents = orm.select_all()
+
+    # Convert ObjectId to string for JSON serialization
+    for doc in documents:
+        if '_id' in doc:
+            doc['_id'] = str(doc['_id'])
+
+    return JsonResponse({
+        'documents': documents,
+        'timestamp': datetime.datetime.now().isoformat()
+    })
+
+@api_view(['DELETE'])
+def delete_all_documents(request):
+    """
+    HTTP DELETE endpoint for deleting all documents in the 'ty_backend_metrics' collection.
+    """
+    database_name = 'voyeur'
+    collection_name = 'ty_backend_metrics'
+    orm = MongoORM(database_name, collection_name)
+    
+    # Using an empty filter {} deletes all documents in the collection.
+    delete_result = orm.delete({})
+    
+    return JsonResponse({
+        'deleted_count': delete_result.deleted_count,
+        'timestamp': datetime.datetime.now().isoformat()
+    })

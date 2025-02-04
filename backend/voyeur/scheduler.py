@@ -1,8 +1,8 @@
 import threading
 import time
 import logging
-from .connect_metrics import connect_metrics
-from .orm_metrics import run_orm_metrics  # 新增導入 ORM Metrics 任務
+# from .connect_metrics import connect_metrics
+# from .orm_metrics import run_orm_metrics  # 新增導入 ORM Metrics 任務
 
 # 設置日誌系統，配置級別為 INFO 以便於追蹤系統運行時的訊息
 logging.basicConfig(level=logging.INFO)
@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 定義執行 connect_metrics 任務的函數，每個任務內部已包含無限迴圈
 # ---------------------------------------------------------------------------
-def run_connect_metrics():
-    """獨立線程中執行 connect_metrics，該函數內部包含無限迴圈"""
-    logger.info("Starting connect_metrics")
-    connect_metrics()
+# def run_connect_metrics():
+#     """獨立線程中執行 connect_metrics，該函數內部包含無限迴圈"""
+#     logger.info("Starting connect_metrics")
+#     connect_metrics()
 
 
 def start_thread(name, target):
@@ -31,8 +31,8 @@ def start_thread(name, target):
 def main():
     # 初始化線程字典，現在包含 connect_metrics 與 orm_metrics 兩個任務
     threads = {
-        "connect": start_thread("ConnectMetricsThread", run_connect_metrics),
-        "orm_metrics": start_thread("ORMMetricsThread", run_orm_metrics),
+        # "connect": start_thread("ConnectMetricsThread", run_connect_metrics),
+        # "orm_metrics": start_thread("ORMMetricsThread", run_orm_metrics),
     }
     
     try:

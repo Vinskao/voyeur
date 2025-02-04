@@ -15,6 +15,8 @@ python3 -m voyeur.connect_metrics
 python3 manage.py runserver
 poetry run python3 manage.py runserver
 poetry run python manage.py runserver
+daphne core.asgi:application
+daphne -b 0.0.0.0 -p 8000 core.asgi:application
 ```
 
 ## 使用方法
@@ -28,3 +30,12 @@ poetry run python manage.py runserver
 3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 打開一個Pull Request
+
+
+## CURL
+```bash
+http://127.0.0.1:8000/api/orm_metrics
+
+curl -X DELETE http://localhost:8000/api/orm_metrics/delete
+
+```

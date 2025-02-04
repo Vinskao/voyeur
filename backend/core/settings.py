@@ -84,7 +84,6 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # 指定 ASGI 應用程序
 ASGI_APPLICATION = 'core.asgi.application'
 
-
 # Database
 DATABASES = {
     'default': {
@@ -144,3 +143,4 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
