@@ -5,10 +5,10 @@ description = "A Django project managed by Poetry"
 authors = ["Your Name <your.email@example.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 django = "^5.0.2"
 python-dotenv = "^1.0.0"
-pymongo = "^4.6.2"
+pymongo = {extras = ["srv"], version = "^4.6.2"}
 stomp-py = "^8.1.0"
 websocket-client = "^1.7.0"
 djangorestframework = "^3.14.0"
