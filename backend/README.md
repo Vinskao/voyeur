@@ -1,41 +1,61 @@
-# 項目名稱
+# Voyeur Backend
 
-## 簡介
-簡要介紹項目的目的和功能。
+這是一個用於收集和提供指標數據的後端服務。
 
 ## 安裝
 
-### 使用Poetry安裝
-確保您已經安裝了[Poetry](https://python-poetry.org/)，然後運行以下命令來安裝項目依賴：
-
+1. 安裝 Poetry（如果尚未安裝）：
 ```bash
-pip install poetry
-poetry install
-python3 -m voyeur.connect_metrics
-python3 manage.py runserver
-poetry run python3 manage.py runserver
-poetry run python manage.py runserver
-daphne core.asgi:application
-daphne -b 0.0.0.0 -p 8000 core.asgi:application
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-## 使用方法
-提供一些基本的使用示例或命令，幫助用戶快速上手。
-
-## 贡献
-如果您想為本項目做出貢獻，請遵循以下步驟：
-
-1. Fork本倉庫
-2. 創建您的功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打開一個Pull Request
-
-
-## CURL
+2. 安裝項目依賴：
 ```bash
-http://127.0.0.1:8000/api/orm_metrics
+poetry install
+```
 
-curl -X DELETE http://localhost:8000/api/orm_metrics/delete
+3. 進入 Poetry shell：
+```bash
+poetry shell
+```
 
+## 配置
+
+創建 `.env` 文件並設置以下環境變數：
+
+```env
+MONGODB_URI=mongodb://localhost:27017/
+MONGODB_DB=voyeur
+MONGODB_COLLECTION=ty_backend_metrics
+WEBSOCKET_HOST=localhost
+WEBSOCKET_PORT=8080
+WEBSOCKET_PATH=/tymb/metrics
+API_HOST=0.0.0.0
+API_PORT=5000
+API_DEBUG=True
+```
+
+## 運行
+
+1. 啟動開發服務器：
+```bash
+poetry run python3 manage.py runserver
+```
+
+2. 使用 Daphne 啟動生產服務器：
+```bash
+poetry run daphne -b 0.0.0.0 -p 8000 voyeur.core.asgi:application
+```
+
+## API 端點
+
+- `GET /api/metrics/`: 獲取所有指標數據
+- `GET /api/orm_metrics/`: 獲取 ORM 相關指標
+- `DELETE /api/orm_metrics/delete`: 刪除 ORM 指標數據
+
+## WebSocket 連接
+
+使用 wscat 測試 WebSocket 連接：
+```bash
+wscat -c ws://localhost:8000/ws/metrics/
 ```
