@@ -1,3 +1,0 @@
-"""
-Voyeur API package.
-""" 

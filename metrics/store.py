@@ -2,7 +2,7 @@ import pymongo
 import logging
 import json
 from datetime import datetime
-from voyeur.core.config import MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION
+from .config import MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO)

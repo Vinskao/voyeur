@@ -3,7 +3,8 @@ import stomp
 import logging
 import json
 import websocket
-from voyeur.metrics.store import store_message_in_mongo
+from .store import store_message_in_mongo
+from .config import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PATH
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO)
@@ -13,12 +14,12 @@ up_data = []
 
 def connect_metrics():
     """Connect to the STOMP server and subscribe to a topic."""
-    conn = stomp.Connection([("localhost", 8080)])  # WebSocket STOMP 端口
+    conn = stomp.Connection([(WEBSOCKET_HOST, WEBSOCKET_PORT)])
 
     while True:
         try:
             conn.connect(wait=True)
-            conn.subscribe(destination="/topic/metrics", id=1, ack="auto")  # 訂閱 STOMP 訊息
+            conn.subscribe(destination="/topic/metrics", id=1, ack="auto")
             logger.info("Subscribed to /topic/metrics")
             while True:
                 time.sleep(1)
@@ -26,7 +27,7 @@ def connect_metrics():
             logger.error(f"WebSocket connection failed: {e}")
             time.sleep(5)  # 連線失敗時，等待 5 秒重試
             conn.disconnect()
-            conn = stomp.Connection([("localhost", 8080)])
+            conn = stomp.Connection([(WEBSOCKET_HOST, WEBSOCKET_PORT)])
 
 def on_message(ws, message):
     """Handle messages received from the WebSocket server."""
@@ -82,12 +83,10 @@ def on_open(ws):
     logger.info("Subscribed to /topic/metrics")
 
 def start_websocket():
-    ws = websocket.WebSocketApp("ws://localhost:8080/tymb/metrics",  # 連接到 /metrics 端點
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    ws.run_forever()
-
-if __name__ == "__main__":
-    connect_metrics() 
+    ws_url = f"ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}{WEBSOCKET_PATH}"
+    ws = websocket.WebSocketApp(ws_url,
+                              on_open=on_open,
+                              on_message=on_message,
+                              on_error=on_error,
+                              on_close=on_close)
+    ws.run_forever() 

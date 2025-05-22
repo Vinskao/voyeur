@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "voyeur"
+version = "0.1.0"
+description = "A Django project managed by Poetry"
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^5.0.2"
+python-dotenv = "^1.0.0"
+pymongo = "^4.6.2"
+stomp-py = "^8.1.0"
+websocket-client = "^1.7.0"
+djangorestframework = "^3.14.0"
+drf-yasg = "^1.21.7"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.1.1"
+flake8 = "^7.0.0"
+pytest = "^8.0.0"
+pytest-django = "^4.8.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
