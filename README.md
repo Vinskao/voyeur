@@ -2,53 +2,88 @@
 
 這是一個用於收集和提供指標數據的後端服務。
 
+# Voyeur API
 
-## Setup
+## Technical Architecture
 
-1. Install Poetry (if you haven't already):
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
+```mermaid
+graph TB
+    subgraph Client
+        C[Client Applications]
+    end
+
+    subgraph Ingress
+        I[NGINX Ingress]
+    end
+
+    subgraph Kubernetes
+        subgraph Pod
+            D[Django Application]
+            subgraph Applications
+                V[Visit App]
+                M[Metrics App]
+                VO[Voyeur App]
+            end
+        end
+        
+        subgraph Database
+            MONGO[(MongoDB)]
+        end
+    end
+
+    C -->|HTTPS| I
+    I -->|/voyeur| D
+    D --> Applications
+    Applications --> MONGO
+
+    classDef k8s fill:#326ce5,stroke:#326ce5,color:white
+    classDef app fill:#2ecc71,stroke:#27ae60,color:white
+    classDef db fill:#e74c3c,stroke:#c0392b,color:white
+    classDef ingress fill:#f1c40f,stroke:#f39c12,color:black
+
+    class Kubernetes k8s
+    class D,Applications app
+    class MONGO db
+    class I ingress
 ```
 
-2. Install dependencies:
+## API Endpoints
+
+### Visit API
+- `GET /visit/count` - Get visit count
+- `POST /visit/increment` - Increment visit count
+
+### Swagger Documentation
+- `http://127.0.0.1:8000/swagger`
+- `http://127.0.0.1:8000/swagger.json`
+
+## Development Setup
+
+1. Install dependencies:
 ```bash
 poetry install
+```
+
+2. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+3. Run migrations:
+```bash
+poetry run python manage.py migrate
+```
+
+4. Start development server:
+```bash
 poetry run python manage.py runserver
-poetry run python3 manage.py runserver
-poetry run python3 manage.py migrate
 ```
 
-## 配置
 
-創建 `.env` 文件並設置以下環境變數：
+## WebSocket Connection
 
-```env
-MONGODB_URI=mongodb://localhost:27017/
-MONGODB_DB=voyeur
-MONGODB_COLLECTION=ty_backend_metrics
-WEBSOCKET_HOST=localhost
-WEBSOCKET_PORT=8080
-WEBSOCKET_PATH=/tymb/metrics
-API_HOST=0.0.0.0
-API_PORT=5000
-API_DEBUG=True
-```
-
-## API 端點
-
-- `GET /api/metrics/`: 獲取所有指標數據
-- `GET /api/orm_metrics/`: 獲取 ORM 相關指標
-- `DELETE /api/orm_metrics/delete`: 刪除 ORM 指標數據
-
-```
-http://127.0.0.1:8000/swagger/
-http://127.0.0.1:8000/swagger.json
-
-https://peoplesystem.tatdvsonorth.com/voyeur/swagger
-```
-## WebSocket 連接
-
-使用 wscat 測試 WebSocket 連接：
+Test WebSocket connection using wscat:
 ```bash
 wscat -c ws://localhost:8000/ws/metrics/
 ```

@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir poetry
 RUN poetry install
 
 # 設定環境變數
-ENV DJANGO_SETTINGS_MODULE=visit.settings
+ENV DJANGO_SETTINGS_MODULE=settings
 
 # 暴露 Django 預設的埠
 EXPOSE 8000
