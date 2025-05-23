@@ -62,11 +62,11 @@ pipeline {
                 container('python') {
                     script {
                         withCredentials([
-                            string(credentialsId: 'VOYEUR_MONGODB_URI', variable: 'MONGODB_URI'),
-                            string(credentialsId: 'VOYEUR_MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
-                            string(credentialsId: 'VOYEUR_MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
-                            string(credentialsId: 'VOYEUR_MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'VOYEUR_DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+                            string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
+                            string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
+                            string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
+                            string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
+                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
                         ]) {
                             sh '''
                                 # 確認 Dockerfile 存在
@@ -99,14 +99,14 @@ pipeline {
                     script {
                         withCredentials([
                             usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD'),
-                            string(credentialsId: 'VOYEUR_MONGODB_URI', variable: 'MONGODB_URI'),
-                            string(credentialsId: 'VOYEUR_MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
-                            string(credentialsId: 'VOYEUR_MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
-                            string(credentialsId: 'VOYEUR_MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'VOYEUR_DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+                            string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
+                            string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
+                            string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
+                            string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
+                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
                         ]) {
                             sh '''
-                                cd /home/jenkins/agent/workspace/VOYEUR/voyeur
+                                cd /home/jenkins/agent/workspace/VOYEUR/voyeur-deploy
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
                                 # 確認 Dockerfile 存在
                                 ls -la
