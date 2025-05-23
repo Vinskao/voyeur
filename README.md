@@ -43,6 +43,8 @@ API_DEBUG=True
 ```
 http://127.0.0.1:8000/swagger/
 http://127.0.0.1:8000/swagger.json
+
+https://peoplesystem.tatdvsonorth.com/voyeur/swagger
 ```
 ## WebSocket 連接
 

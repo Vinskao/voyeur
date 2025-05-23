@@ -14,10 +14,10 @@ RUN pip install --no-cache-dir poetry
 RUN poetry install
 
 # 設定環境變數
-ENV DJANGO_SETTINGS_MODULE=core.settings
+ENV DJANGO_SETTINGS_MODULE=visit.settings
 
 # 暴露 Django 預設的埠
 EXPOSE 8000
 
 # 啟動命令
-CMD ["sh", "-c", "poetry run python manage.py runserver 0.0.0.0:8000 & poetry run python manage.py run_scheduler"]
+CMD ["sh", "-c", "poetry run python manage.py runserver 0.0.0.0:8000"]
