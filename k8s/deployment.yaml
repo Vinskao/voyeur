@@ -4,11 +4,11 @@ metadata:
   name: voyeur-secrets
 type: Opaque
 stringData:
-  MONGODB_URI: "mongodb://adminuser:password123@138.2.46.52:32001/?tls=true&tlsAllowInvalidCertificates=true"
-  MONGODB_USERNAME: "adminuser"
-  MONGODB_PASSWORD: "password123"
-  MONGODB_AUTH_SOURCE: "admin"
-  DJANGO_SECRET_KEY: "django-insecure-development-key-change-in-production"
+  MONGODB_URI: "${MONGODB_URI}"
+  MONGODB_USERNAME: "${MONGODB_USERNAME}"
+  MONGODB_PASSWORD: "${MONGODB_PASSWORD}"
+  MONGODB_AUTH_SOURCE: "${MONGODB_AUTH_SOURCE}"
+  DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY}"
 ---
 apiVersion: apps/v1
 kind: Deployment
