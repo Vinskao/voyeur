@@ -58,9 +58,9 @@ spec:
               name: voyeur-secrets
               key: DJANGO_SECRET_KEY
         - name: DJANGO_DEBUG
-          value: "False"
+          value: "True"
         - name: DJANGO_ALLOWED_HOSTS
-          value: "voyeur.tatdvsonorth.com"
+          value: "peoplesystem.tatdvsonorth.com"
 ---
 apiVersion: v1
 kind: Service

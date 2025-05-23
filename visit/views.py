@@ -66,7 +66,7 @@ def get_visit_count(request):
             client.close()
 
 @swagger_auto_schema(
-    method='get',
+    method='post',
     operation_description="Increment the visit count",
     responses={
         200: openapi.Response(
@@ -82,7 +82,7 @@ def get_visit_count(request):
         500: openapi.Response(description="Server Error")
     }
 )
-@api_view(['GET'])
+@api_view(['POST'])
 def increment_visit_count(request):
     client = None
     try:
