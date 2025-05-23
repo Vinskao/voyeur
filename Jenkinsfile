@@ -8,7 +8,7 @@ pipeline {
                   serviceAccountName: jenkins-admin
                   containers:
                   - name: python
-                    image: python:3.13-slim
+                    image: python:3.12-slim
                     command: ["cat"]
                     tty: true
                     volumeMounts:
