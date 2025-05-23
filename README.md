@@ -14,6 +14,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 ```bash
 poetry install
 poetry run python manage.py runserver
+poetry run python3 manage.py runserver
+poetry run python3 manage.py migrate
 ```
 
 ## 配置
@@ -39,7 +41,7 @@ API_DEBUG=True
 - `DELETE /api/orm_metrics/delete`: 刪除 ORM 指標數據
 
 ```
-http://127.0.0.1:8000/swagger.json
+http://127.0.0.1:8000/swagger/
 http://127.0.0.1:8000/swagger.json
 ```
 ## WebSocket 連接
