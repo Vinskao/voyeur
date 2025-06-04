@@ -11,7 +11,8 @@ schema_view = get_schema_view(
         description="API documentation for Voyeur metrics collection service",
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[AllowAny],
+    authentication_classes=[],
 )
 
 urlpatterns = [
