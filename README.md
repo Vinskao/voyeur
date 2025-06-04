@@ -90,32 +90,11 @@ Test WebSocket connection using wscat:
 wscat -c ws://localhost:8000/ws/metrics/
 ```
 
-## 專案結構圖
+## Django User
+```bash
+poetry run python manage.py createsuperuser
 ```
-voyeur/                      # 專案根目錄
-├── voyeur/                  # 主專案配置目錄
-│   ├── __init__.py
-│   ├── urls.py             # URL 路由配置
-│   ├── asgi.py             # ASGI 配置
-│   └── wsgi.py             # WSGI 配置
-│
-├── visit/                   # 訪問計數應用
-│   ├── __init__.py
-│   ├── apps.py             # 應用配置
-│   ├── config.py           # 應用設定
-│   ├── urls.py             # 應用 URL 路由
-│   └── views.py            # 視圖邏輯
-│
-├── k8s/                     # Kubernetes 配置
-│   └── deployment.yaml      # K8s 部署配置
-│
-├── metrics/                 # 監控指標配置
-│
-├── manage.py               # Django 管理腳本
-├── settings.py             # 專案設定
-├── Dockerfile              # Docker 構建配置
-├── pyproject.toml          # Poetry 依賴配置
-├── poetry.lock            # Poetry 依賴鎖定
-├── .env                    # 環境變數
-└── README.md              # 專案文檔
-```
+
+DEBUG:voyeur.settings:ALLOWED_HOSTS: ['*']
+Username (leave blank to use 'vinskao'): 
+Email address: tianyikao@gmail.com
