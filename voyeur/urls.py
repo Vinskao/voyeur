@@ -21,9 +21,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Authentication URLs - using Django's built-in auth URLs
     path('accounts/', include('django.contrib.auth.urls')),
-    # Swagger UI
-    re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    # Swagger UI - with voyeur prefix for Ingress compatibility
+    re_path(r'^voyeur/swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('voyeur/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     # Visit API
     path('voyeur/', include('visit.urls')),
 ] 
