@@ -3,7 +3,6 @@ from django.urls import path, re_path, include
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from django.contrib.auth import views as auth_views
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -20,9 +19,8 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Authentication URLs
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='admin/login.html'), name='login'),
-    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
+    # Authentication URLs - using Django's built-in auth URLs
+    path('accounts/', include('django.contrib.auth.urls')),
     # Swagger UI
     re_path(r'^voyeur/swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('voyeur/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
