@@ -8,7 +8,7 @@ pipeline {
                   serviceAccountName: jenkins-admin
                   containers:
                   - name: python
-                    image: python:3.12-slim
+                    image: python:3.13
                     command: ["cat"]
                     tty: true
                     volumeMounts:
@@ -87,6 +87,7 @@ pipeline {
                 container('python') {
                     sh '''
                         pip install poetry
+                        poetry lock
                         poetry install
                     '''
                 }
