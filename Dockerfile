@@ -20,9 +20,15 @@ COPY . .
 # 根據環境變數選擇正確的 .env 文件
 ARG DJANGO_ENV=production
 RUN if [ "$DJANGO_ENV" = "production" ]; then \
-        cp .env.production .env; \
+        if [ -f ".env.production" ]; then \
+            cp .env.production .env; \
+        else \
+            echo "Error: .env.production file not found!"; \
+            exit 1; \
+        fi \
     else \
-        cp .env .env; \
+        echo "Error: DJANGO_ENV must be set to 'production'"; \
+        exit 1; \
     fi
 
 # 收集靜態文件
