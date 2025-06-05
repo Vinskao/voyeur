@@ -17,11 +17,20 @@ RUN poetry config virtualenvs.create false \
 # 複製其餘的專案文件
 COPY . .
 
+# 根據環境變數選擇正確的 .env 文件
+ARG DJANGO_ENV=production
+RUN if [ "$DJANGO_ENV" = "production" ]; then \
+        cp .env.production .env; \
+    else \
+        cp .env .env; \
+    fi
+
 # 收集靜態文件
 RUN poetry run python manage.py collectstatic --noinput
 
 # 設定環境變數
 ENV DJANGO_SETTINGS_MODULE=voyeur.settings
+ENV DJANGO_ENV=${DJANGO_ENV}
 
 # 暴露 Django 預設的埠
 EXPOSE 8000

@@ -128,7 +128,8 @@ pipeline {
                                     --build-arg MONGODB_AUTH_SOURCE="${MONGODB_AUTH_SOURCE}" \
                                     --build-arg DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
                                     --build-arg DJANGO_HOST="${DJANGO_HOST}" \
-                                    --build-arg DJANGO_ENV="${DJANGO_ENV}" \
+                                    --build-arg DJANGO_ENV="production" \
+                                    --build-arg DJANGO_ALLOWED_HOSTS="peoplesystem.tatdvsonorth.com" \
                                     --cache-from ${DOCKER_IMAGE}:latest \
                                     -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
                                     -t ${DOCKER_IMAGE}:latest \

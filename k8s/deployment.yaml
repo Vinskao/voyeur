@@ -58,13 +58,19 @@ spec:
               name: voyeur-secrets
               key: DJANGO_SECRET_KEY
         - name: DJANGO_DEBUG
-          value: "True"
+          value: "False"
         - name: DJANGO_ALLOWED_HOSTS
           value: "peoplesystem.tatdvsonorth.com"
         - name: DJANGO_HOST
           value: "peoplesystem.tatdvsonorth.com"
         - name: DJANGO_ENV
           value: "production"
+        - name: WEBSOCKET_HOST
+          value: "peoplesystem.tatdvsonorth.com"
+        - name: WEBSOCKET_PORT
+          value: "443"
+        - name: WEBSOCKET_PATH
+          value: "/tymb/metrics"
 ---
 apiVersion: v1
 kind: Service
