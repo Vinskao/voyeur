@@ -7,8 +7,10 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables based on DJANGO_ENV
+env_file = '.env.production' if os.getenv('DJANGO_ENV') == 'production' else '.env'
+load_dotenv(env_file)
+logger.debug(f"Loading environment from: {env_file}")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,12 +19,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-default-key-for-development')
 logger.debug(f"SECRET_KEY is set: {bool(SECRET_KEY)}")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Force DEBUG mode to True
-logger.debug(f"DEBUG mode is: {DEBUG}")
+# Get the host from environment or use default
+HOST = os.getenv('DJANGO_HOST', '127.0.0.1:8000')
+IS_PRODUCTION = os.getenv('DJANGO_ENV') == 'production'
+logger.debug(f"Environment: {'Production' if IS_PRODUCTION else 'Development'}")
 
-ALLOWED_HOSTS = ['*']  # Allow all hosts in debug mode
-logger.debug(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+# Base URL for API
+BASE_URL = f"https://{HOST}" if IS_PRODUCTION else f"http://{HOST}"
+logger.debug(f"Base URL: {BASE_URL}")
+
+# Debug settings
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# MongoDB settings
+MONGODB_URI = os.getenv('MONGODB_URI')
+MONGODB_DB = os.getenv('MONGODB_DB', 'voyeur')
+MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'metrics')
+MONGODB_USERNAME = os.getenv('MONGODB_USERNAME')
+MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
+MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
+
+# WebSocket settings
+WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')
+WEBSOCKET_PORT = int(os.getenv('WEBSOCKET_PORT', '8080'))
+WEBSOCKET_PATH = os.getenv('WEBSOCKET_PATH', '/tymb/metrics')
 
 # Application definition
 INSTALLED_APPS = [
@@ -37,10 +58,12 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'metrics',
+    'whitenoise.runserver_nostatic',  # Add WhiteNoise
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # 必須放在最前面
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -52,6 +75,20 @@ MIDDLEWARE = [
 
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,  # <--- 關閉會話驗證
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'VALIDATOR_URL': None,
+    'OPERATIONS_SORTER': None,
+    'TAGS_SORTER': None,
+    'DOC_EXPANSION': 'none',
+    'DEFAULT_MODEL_RENDERING': 'model',
+    'DEFAULT_INFO': None,
+    'DEFAULT_API_URL': f"{BASE_URL}/voyeur/",
 }
 
 # CORS settings
@@ -114,8 +151,9 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = '/voyeur/static/'  # Add URL prefix
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -4,16 +4,21 @@ from rest_framework import permissions
 from rest_framework.permissions import AllowAny
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.conf import settings
 
 schema_view = get_schema_view(
     openapi.Info(
         title="Voyeur API",
         default_version='v1',
         description="API documentation for Voyeur metrics collection service",
+        terms_of_service="https://peoplesystem.tatdvsonorth.com/terms/",
+        contact=openapi.Contact(email="contact@example.com"),
+        license=openapi.License(name="BSD License"),
     ),
     public=True,
     permission_classes=[AllowAny],
     authentication_classes=[],
+    url=settings.SWAGGER_SETTINGS['DEFAULT_API_URL'],
 )
 
 urlpatterns = [

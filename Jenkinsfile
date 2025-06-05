@@ -66,7 +66,9 @@ pipeline {
                             string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
                             string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
+                            string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
+                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
                         ]) {
                             sh '''
                                 # 確認 Dockerfile 存在
@@ -104,7 +106,9 @@ pipeline {
                             string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
                             string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
+                            string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
+                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
                         ]) {
                             sh '''
                                 cd /home/jenkins/agent/workspace/VOYEUR/voyeur-deploy
@@ -123,6 +127,8 @@ pipeline {
                                     --build-arg MONGODB_PASSWORD="${MONGODB_PASSWORD}" \
                                     --build-arg MONGODB_AUTH_SOURCE="${MONGODB_AUTH_SOURCE}" \
                                     --build-arg DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
+                                    --build-arg DJANGO_HOST="${DJANGO_HOST}" \
+                                    --build-arg DJANGO_ENV="${DJANGO_ENV}" \
                                     --cache-from ${DOCKER_IMAGE}:latest \
                                     -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
                                     -t ${DOCKER_IMAGE}:latest \
