@@ -104,3 +104,10 @@ spec:
             name: voyeur
             port:
               number: 80
+      - path: /voyeur/static
+        pathType: Prefix
+        backend:
+          service:
+            name: voyeur
+            port:
+              number: 80

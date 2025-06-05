@@ -4,14 +4,21 @@ FROM python:3.12-slim
 # 設定工作目錄
 WORKDIR /app
 
-# 複製當前目錄內容到容器中的 /app
-COPY . /app
+# 複製 pyproject.toml 和 poetry.lock
+COPY pyproject.toml poetry.lock ./
 
 # 安裝 Poetry
 RUN pip install --no-cache-dir poetry
 
 # 使用 Poetry 安裝 Python 依賴項
-RUN poetry install
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --only main
+
+# 複製其餘的專案文件
+COPY . .
+
+# 收集靜態文件
+RUN poetry run python manage.py collectstatic --noinput
 
 # 設定環境變數
 ENV DJANGO_SETTINGS_MODULE=voyeur.settings
