@@ -30,7 +30,7 @@ logger.debug(f"Base URL: {BASE_URL}")
 
 # Debug settings
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['peoplesystem.tatdvsonorth.com'] if IS_PRODUCTION else ['localhost', '127.0.0.1']
 
 # MongoDB settings
 MONGODB_URI = os.getenv('MONGODB_URI')
