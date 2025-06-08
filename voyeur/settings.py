@@ -21,7 +21,10 @@ logger.debug(f"SECRET_KEY is set: {bool(SECRET_KEY)}")
 
 # Get the host from environment or use default
 HOST = os.getenv('DJANGO_HOST', '127.0.0.1:8000')
-IS_PRODUCTION = os.getenv('DJANGO_ENV') == 'production'
+DJANGO_ENV = os.getenv('DJANGO_ENV', '')
+IS_PRODUCTION = DJANGO_ENV.lower() == 'production'
+
+logger.debug(f"DJANGO_ENV = {DJANGO_ENV}")
 logger.debug(f"Environment: {'Production' if IS_PRODUCTION else 'Development'}")
 
 # Base URL for API
@@ -29,8 +32,9 @@ BASE_URL = f"https://{HOST}" if IS_PRODUCTION else f"http://{HOST}"
 logger.debug(f"Base URL: {BASE_URL}")
 
 # Debug settings
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = ['peoplesystem.tatdvsonorth.com'] if IS_PRODUCTION else ['localhost', '127.0.0.1']
+DEBUG = not IS_PRODUCTION
+ALLOWED_HOSTS = ['*']  # 暫時允許所有主機，用於調試
+logger.debug(f"ALLOWED_HOSTS = {ALLOWED_HOSTS}")
 
 # MongoDB settings
 MONGODB_URI = os.getenv('MONGODB_URI')
