@@ -37,18 +37,17 @@ ALLOWED_HOSTS = ['*']  # 暫時允許所有主機，用於調試
 logger.debug(f"ALLOWED_HOSTS = {ALLOWED_HOSTS}")
 
 # MongoDB settings
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+MONGODB_URI = os.getenv('MONGODB_URI')
 if not MONGODB_URI or MONGODB_URI.startswith('${'):
-    MONGODB_URI = 'mongodb://localhost:27017'
-    logger.warning("Using default MongoDB URI: mongodb://localhost:27017")
-
-MONGODB_DB = os.getenv('MONGODB_DB', 'voyeur')
-MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'metrics')
-MONGODB_USERNAME = os.getenv('MONGODB_USERNAME', '')
-MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', '')
-MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
+    logger.error("MongoDB URI is not properly set!")
+    raise ValueError("MongoDB URI must be set in environment variables")
 
 logger.debug(f"MongoDB URI: {MONGODB_URI}")
+MONGODB_DB = os.getenv('MONGODB_DB', 'voyeur')
+MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'metrics')
+MONGODB_USERNAME = os.getenv('MONGODB_USERNAME')
+MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
+MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
 
 # WebSocket settings
 WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')
