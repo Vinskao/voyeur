@@ -37,12 +37,18 @@ ALLOWED_HOSTS = ['*']  # 暫時允許所有主機，用於調試
 logger.debug(f"ALLOWED_HOSTS = {ALLOWED_HOSTS}")
 
 # MongoDB settings
-MONGODB_URI = os.getenv('MONGODB_URI')
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+if not MONGODB_URI or MONGODB_URI.startswith('${'):
+    MONGODB_URI = 'mongodb://localhost:27017'
+    logger.warning("Using default MongoDB URI: mongodb://localhost:27017")
+
 MONGODB_DB = os.getenv('MONGODB_DB', 'voyeur')
 MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'metrics')
-MONGODB_USERNAME = os.getenv('MONGODB_USERNAME')
-MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
+MONGODB_USERNAME = os.getenv('MONGODB_USERNAME', '')
+MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', '')
 MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
+
+logger.debug(f"MongoDB URI: {MONGODB_URI}")
 
 # WebSocket settings
 WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')
@@ -76,24 +82,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-SWAGGER_SETTINGS = {
-    'USE_SESSION_AUTH': False,  # <--- 關閉會話驗證
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        }
-    },
-    'VALIDATOR_URL': None,
-    'OPERATIONS_SORTER': None,
-    'TAGS_SORTER': None,
-    'DOC_EXPANSION': 'none',
-    'DEFAULT_MODEL_RENDERING': 'model',
-    'DEFAULT_INFO': None,
-    'DEFAULT_API_URL': f"{BASE_URL}/voyeur/",
-}
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
@@ -132,6 +120,39 @@ CSRF_TRUSTED_ORIGINS = [
 CSRF_COOKIE_SECURE = IS_PRODUCTION
 CSRF_COOKIE_HTTPONLY = True
 CSRF_USE_SESSIONS = True
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
+}
+
+# Swagger settings
+FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'VALIDATOR_URL': None,
+    'OPERATIONS_SORTER': None,
+    'TAGS_SORTER': None,
+    'DOC_EXPANSION': 'none',
+    'DEFAULT_MODEL_RENDERING': 'model',
+    'DEFAULT_INFO': None,
+    'DEFAULT_API_URL': f"{BASE_URL}/voyeur/",
+}
 
 ROOT_URLCONF = 'voyeur.urls'
 
@@ -191,15 +212,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework settings
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
-} 
+# ... rest of your settings ... 
