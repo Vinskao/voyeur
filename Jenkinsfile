@@ -159,31 +159,24 @@ pipeline {
                 container('kubectl') {
                     withKubeConfig([credentialsId: 'kubeconfig-secret']) {
                         script {
-                            try {
-                                // 測試集群連接
-                                sh 'kubectl cluster-info'
-                                
-                                // 檢查 deployment.yaml 文件
-                                sh 'ls -la k8s/'
-                                
-                                // 檢查 Deployment 是否存在
+                            withCredentials([
+                                string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
+                                string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
+                                string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
+                                string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
+                                string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
+                                string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
+                                string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
+                            ]) {
                                 sh '''
-                                    if kubectl get deployment voyeur -n default; then
-                                        echo "Deployment exists, updating..."
-                                        kubectl set image deployment/voyeur voyeur=${DOCKER_IMAGE}:${DOCKER_TAG} -n default
-                                        kubectl rollout restart deployment voyeur
-                                    else
-                                        echo "Deployment does not exist, creating..."
-                                        kubectl apply -f k8s/deployment.yaml
-                                    fi
+                                    # 替換 deployment.yaml 中的環境變數
+                                    envsubst < k8s/deployment.yaml > k8s/deployment.yaml.tmp
+                                    mv k8s/deployment.yaml.tmp k8s/deployment.yaml
+                                    
+                                    # 部署到 Kubernetes
+                                    kubectl apply -f k8s/deployment.yaml
+                                    kubectl rollout restart deployment voyeur
                                 '''
-                                
-                                // 檢查部署狀態
-                                sh 'kubectl get deployments -n default'
-                                sh 'kubectl rollout status deployment/voyeur'
-                            } catch (Exception e) {
-                                echo "Error during deployment: ${e.message}"
-                                throw e
                             }
                         }
                     }

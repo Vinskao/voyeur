@@ -9,6 +9,8 @@ stringData:
   MONGODB_PASSWORD: "${MONGODB_PASSWORD}"
   MONGODB_AUTH_SOURCE: "${MONGODB_AUTH_SOURCE}"
   DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY}"
+  DJANGO_HOST: "${DJANGO_HOST}"
+  DJANGO_ENV: "${DJANGO_ENV}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,9 +64,15 @@ spec:
         - name: DJANGO_ALLOWED_HOSTS
           value: "peoplesystem.tatdvsonorth.com"
         - name: DJANGO_HOST
-          value: "peoplesystem.tatdvsonorth.com"
+          valueFrom:
+            secretKeyRef:
+              name: voyeur-secrets
+              key: DJANGO_HOST
         - name: DJANGO_ENV
-          value: "production"
+          valueFrom:
+            secretKeyRef:
+              name: voyeur-secrets
+              key: DJANGO_ENV
         - name: WEBSOCKET_HOST
           value: "peoplesystem.tatdvsonorth.com"
         - name: WEBSOCKET_PORT
