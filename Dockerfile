@@ -42,7 +42,8 @@ ENV DJANGO_SETTINGS_MODULE=voyeur.settings
 RUN poetry run python manage.py collectstatic --noinput --clear
 
 # 設定權限
-RUN chmod -R 755 /app/staticfiles
+RUN chmod -R 755 /app/staticfiles && \
+    chown -R root:root /app/staticfiles
 
 # 暴露 Django 預設的埠
 EXPOSE 8000

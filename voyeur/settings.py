@@ -207,13 +207,12 @@ USE_TZ = True
 STATIC_URL = '/voyeur/static/' if IS_PRODUCTION else '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Configure WhiteNoise for static files
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_ALLOW_ALL_ORIGINS = True
-WHITENOISE_INDEX_FILE = True
-WHITENOISE_ROOT = STATIC_ROOT
+# Configure static files
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 # Add security headers
 SECURE_CONTENT_TYPE_NOSNIFF = True
