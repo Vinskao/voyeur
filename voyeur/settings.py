@@ -144,6 +144,22 @@ SWAGGER_SETTINGS = {
     'DEFAULT_MODEL_RENDERING': 'model',
     'DEFAULT_INFO': None,
     'DEFAULT_API_URL': f"{BASE_URL}/voyeur/",
+    'STATIC_URL': '/voyeur/static/' if IS_PRODUCTION else '/static/',
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+    },
+    'SWAGGER_UI_DIST': 'drf-yasg/swagger-ui-dist',
+    'SWAGGER_UI_EXTRA_JS': [
+        'drf-yasg/insQ.min.js',
+        'drf-yasg/immutable.min.js',
+    ],
+    'SWAGGER_UI_EXTRA_CSS': [
+        'drf-yasg/style.css',
+        'drf-yasg/swagger-ui-dist/swagger-ui.css',
+    ],
 }
 
 ROOT_URLCONF = 'voyeur.urls'
