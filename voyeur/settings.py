@@ -1,16 +1,10 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# Load environment variables based on DJANGO_ENV
-env_file = '.env.production' if os.getenv('DJANGO_ENV') == 'production' else '.env'
-load_dotenv(env_file)
-logger.debug(f"Loading environment from: {env_file}")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -134,7 +128,6 @@ REST_FRAMEWORK = {
 }
 
 # Swagger settings
-# FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'SECURITY_DEFINITIONS': {
@@ -204,7 +197,7 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/static/'
+STATIC_URL = '/voyeur/static/' if IS_PRODUCTION else '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Configure static files
