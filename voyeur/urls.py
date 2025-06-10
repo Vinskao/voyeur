@@ -30,7 +30,4 @@ urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     # Visit API
     path('', include('visit.urls')),
-]
-
-# Add /voyeur prefix to all URLs
-urlpatterns = [path('voyeur/', include(urlpatterns))] 
+] 

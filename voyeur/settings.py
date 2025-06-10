@@ -134,7 +134,7 @@ REST_FRAMEWORK = {
 }
 
 # Swagger settings
-FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
+# FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'SECURITY_DEFINITIONS': {
@@ -204,7 +204,7 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/voyeur/static/' if IS_PRODUCTION else '/static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Configure static files
