@@ -54,10 +54,15 @@ graph TB
 - `POST /visit/increment` - Increment visit count
 
 ### Swagger Documentation
-- `http://127.0.0.1:8000/voyeur/swagger`
 - `http://127.0.0.1:8000/voyeur/swagger.json`
-- `https://peoplesystem.tatdvsonorth.com/voyeur/swagger`
 - `https://peoplesystem.tatdvsonorth.com/voyeur/swagger.json`
+
+```bash
+curl http://127.0.0.1:8000/voyeur/swagger.json
+curl http://127.0.0.1:8000/voyeur/count/
+curl https://peoplesystem.tatdvsonorth.com/voyeur/swagger.json
+curl https://peoplesystem.tatdvsonorth.com/voyeur/count/
+```
 
 ## Development Setup
 
