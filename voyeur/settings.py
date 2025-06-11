@@ -144,7 +144,7 @@ SWAGGER_SETTINGS = {
     'DEFAULT_MODEL_RENDERING': 'model',
     'DEFAULT_INFO': None,
     'DEFAULT_API_URL': f"{BASE_URL}/voyeur/",
-    'STATIC_URL': '/voyeur/static/' if IS_PRODUCTION else '/static/',
+    'STATIC_URL': '/voyeur/static/',
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'persistAuthorization': True,
@@ -213,7 +213,7 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/voyeur/static/' if IS_PRODUCTION else '/static/'
+STATIC_URL = '/voyeur/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Configure static files
@@ -230,5 +230,3 @@ X_FRAME_OPTIONS = 'DENY'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ... rest of your settings ... 
