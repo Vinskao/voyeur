@@ -125,13 +125,6 @@ spec:
   - host: peoplesystem.tatdvsonorth.com
     http:
       paths:
-      - path: /voyeur/static/
-        pathType: Prefix
-        backend:
-          service:
-            name: voyeur
-            port:
-              number: 80
       - path: /voyeur/
         pathType: Prefix
         backend:
