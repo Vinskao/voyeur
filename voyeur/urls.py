@@ -20,7 +20,7 @@ schema_view = get_schema_view(
 )
 
 # Base URL patterns
-urlpatterns = [
+base_urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('visit.urls')),
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
@@ -29,4 +29,7 @@ urlpatterns = [
 
 # Add static files serving in development
 if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
+    base_urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Wrap all URLs with /voyeur prefix
+urlpatterns = [path('voyeur/', include(base_urlpatterns))] 

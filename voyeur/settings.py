@@ -128,7 +128,7 @@ REST_FRAMEWORK = {
 }
 
 # Swagger settings
-FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
+FORCE_SCRIPT_NAME = '/voyeur'
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'VALIDATOR_URL': None,
@@ -208,5 +208,3 @@ X_FRAME_OPTIONS = 'DENY'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ... rest of your settings ... 
