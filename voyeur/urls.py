@@ -17,13 +17,10 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
-    patterns=[
-        path('voyeur/', include('visit.urls')),
-    ],
 )
 
 # Base URL patterns
-base_urlpatterns = [
+urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('visit.urls')),
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
@@ -32,7 +29,4 @@ base_urlpatterns = [
 
 # Add static files serving in development
 if settings.DEBUG:
-    base_urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-# Wrap all URLs with /voyeur prefix
-urlpatterns = [path('voyeur/', include(base_urlpatterns))] 
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
