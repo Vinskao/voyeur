@@ -79,6 +79,8 @@ spec:
           value: "443"
         - name: WEBSOCKET_PATH
           value: "/tymb/metrics"
+        - name: FORCE_SCRIPT_NAME
+          value: "/voyeur"
 ---
 apiVersion: v1
 kind: Service
