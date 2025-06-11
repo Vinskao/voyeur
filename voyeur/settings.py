@@ -55,18 +55,15 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
     'visit',
     'rest_framework',
     'drf_yasg',
     'corsheaders',
     'metrics',
-    'whitenoise.runserver_nostatic',  # Add WhiteNoise
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # 必須放在最前面
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -116,6 +113,9 @@ CSRF_USE_SESSIONS = True
 
 # REST Framework settings
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
@@ -189,17 +189,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = '/voyeur/static/' if IS_PRODUCTION else '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Configure static files
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
-STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-]
 
 # Add security headers
 SECURE_CONTENT_TYPE_NOSNIFF = True
