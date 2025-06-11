@@ -79,8 +79,6 @@ spec:
           value: "443"
         - name: WEBSOCKET_PATH
           value: "/tymb/metrics"
-        - name: FORCE_SCRIPT_NAME
-          value: "/voyeur"
 ---
 apiVersion: v1
 kind: Service
@@ -129,14 +127,14 @@ spec:
   - host: peoplesystem.tatdvsonorth.com
     http:
       paths:
-      - path: /voyeur/static(/|$)(.*)
+      - path: /visit/static(/|$)(.*)
         pathType: Prefix
         backend:
           service:
             name: voyeur
             port:
               number: 80
-      - path: /voyeur(/|$)(.*)
+      - path: /visit(/|$)(.*)
         pathType: Prefix
         backend:
           service:
