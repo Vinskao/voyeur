@@ -130,13 +130,6 @@ REST_FRAMEWORK = {
 # Swagger settings
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        }
-    },
     'VALIDATOR_URL': None,
     'OPERATIONS_SORTER': None,
     'TAGS_SORTER': None,
