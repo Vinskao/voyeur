@@ -1,7 +1,9 @@
 from django.urls import path
-from . import views
- 
+from .views import VisitCountView, IncrementView
+
+app_name = 'visit'
+
 urlpatterns = [
-    path('visit/count', views.get_visit_count, name='get_visit_count'),
-    path('visit/increment', views.increment_visit_count, name='increment_visit_count'),
-] 
+    path('count/', VisitCountView.as_view(), name='visit_count'),
+    path('increment/', IncrementView.as_view(), name='increment_count'),
+]

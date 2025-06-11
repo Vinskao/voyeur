@@ -128,6 +128,7 @@ REST_FRAMEWORK = {
 }
 
 # Swagger settings
+FORCE_SCRIPT_NAME = '/voyeur' if IS_PRODUCTION else None
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'VALIDATOR_URL': None,
