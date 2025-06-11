@@ -39,8 +39,10 @@ ENV DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
 ENV DJANGO_SETTINGS_MODULE=voyeur.settings
 
 # 收集靜態文件
-RUN poetry run python manage.py collectstatic --noinput --clear && \
-    chmod -R 755 /app/staticfiles && \
+RUN poetry run python manage.py collectstatic --noinput --clear
+
+# 設定權限
+RUN chmod -R 755 /app/staticfiles && \
     chown -R root:root /app/staticfiles
 
 # 暴露 Django 預設的埠
