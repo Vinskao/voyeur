@@ -68,7 +68,11 @@ pipeline {
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                             string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
                             string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
+                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                            string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
+                            string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                            string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
+                            string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                         ]) {
                             sh '''
                                 # 確認 Dockerfile 存在
@@ -108,7 +112,11 @@ pipeline {
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                             string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
                             string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
+                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                            string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
+                            string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                            string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
+                            string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                         ]) {
                             sh '''
                                 cd /home/jenkins/agent/workspace/VOYEUR/voyeur-deploy
@@ -130,6 +138,10 @@ pipeline {
                                     --build-arg DJANGO_HOST="${DJANGO_HOST}" \
                                     --build-arg DJANGO_ENV="production" \
                                     --build-arg DJANGO_ALLOWED_HOSTS="peoplesystem.tatdvsonorth.com" \
+                                    --build-arg REDIS_HOST="${REDIS_HOST}" \
+                                    --build-arg REDIS_PORT="${REDIS_PORT}" \
+                                    --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
+                                    --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
                                     --cache-from ${DOCKER_IMAGE}:latest \
                                     -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
                                     -t ${DOCKER_IMAGE}:latest \
@@ -166,7 +178,11 @@ pipeline {
                                 string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                                 string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
                                 string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                                string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV')
+                                string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                                string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
+                                string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                                string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
+                                string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                             ]) {
                                 sh '''
                                     # 替換 deployment.yaml 中的環境變數

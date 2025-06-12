@@ -60,8 +60,10 @@ graph TB
 ```bash
 curl http://127.0.0.1:8000/voyeur/increment/
 curl http://127.0.0.1:8000/voyeur/count/
+curl -X POST http://localhost:8000/voyeur/push/ -d "value=1"
 curl https://peoplesystem.tatdvsonorth.com/voyeur/increment/
 curl https://peoplesystem.tatdvsonorth.com/voyeur/count/
+curl -X POST https://peoplesystem.tatdvsonorth.com/voyeur/push/ -d "value=1"
 ```
 
 ## Development Setup
