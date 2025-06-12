@@ -58,7 +58,7 @@ graph TB
 - `https://peoplesystem.tatdvsonorth.com/voyeur/swagger.json`
 
 ```bash
-curl http://127.0.0.1:8000/voyeur/increment/
+curl -X POST http://127.0.0.1:8000/voyeur/increment/
 curl http://127.0.0.1:8000/voyeur/count/
 curl -X POST http://localhost:8000/voyeur/push/ -d "value=1"
 curl https://peoplesystem.tatdvsonorth.com/voyeur/increment/

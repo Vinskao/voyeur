@@ -70,7 +70,7 @@ pipeline {
                             string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
                             string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
-                            string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                            string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                             string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
                             string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                         ]) {
@@ -114,7 +114,7 @@ pipeline {
                             string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
                             string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
-                            string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                            string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                             string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
                             string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                         ]) {
@@ -139,7 +139,7 @@ pipeline {
                                     --build-arg DJANGO_ENV="production" \
                                     --build-arg DJANGO_ALLOWED_HOSTS="peoplesystem.tatdvsonorth.com" \
                                     --build-arg REDIS_HOST="${REDIS_HOST}" \
-                                    --build-arg REDIS_PORT="${REDIS_PORT}" \
+                                    --build-arg REDIS_CUSTOM_PORT="${REDIS_CUSTOM_PORT}" \
                                     --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
                                     --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
                                     --cache-from ${DOCKER_IMAGE}:latest \
@@ -180,7 +180,7 @@ pipeline {
                                 string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
                                 string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
                                 string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
-                                string(credentialsId: 'REDIS_PORT', variable: 'REDIS_PORT'),
+                                string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                                 string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
                                 string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                             ]) {

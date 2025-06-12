@@ -5,6 +5,9 @@ from django.utils.decorators import method_decorator
 import redis
 import os
 from urllib.parse import urlparse
+import logging
+
+logger = logging.getLogger(__name__)
 
 def parse_redis_url(url):
     """Parse Redis URL into host and port."""
@@ -16,7 +19,7 @@ def parse_redis_url(url):
         host = parsed.hostname
         port = parsed.port or 6379
         return host, port
-    return url, int(os.getenv('REDIS_PORT', '6379'))
+    return url, int(os.getenv('REDIS_CUSTOM_PORT', '6379'))
 
 # Redis 設定
 REDIS_HOST, REDIS_PORT = parse_redis_url(os.getenv('REDIS_HOST'))
@@ -37,20 +40,33 @@ def get_redis_connection():
         r.ping()  # 測試連線
         return r
     except redis.exceptions.ConnectionError as e:
+        logger.error(f"Redis connection error: {str(e)}")
         raise Exception(f"Redis connection error: {str(e)}")
 
 class VisitCountView(View):
     def get(self, request):
-        r = get_redis_connection()
-        count = r.get('visit_count') or 0
-        return JsonResponse({'count': int(count)})
+        try:
+            r = get_redis_connection()
+            count = r.get('visit_count')
+            logger.info(f"Current visit count: {count}")
+            if count is None:
+                count = 0
+            return JsonResponse({'count': int(count)})
+        except Exception as e:
+            logger.error(f"Error getting visit count: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class IncrementView(View):
     def post(self, request):
-        r = get_redis_connection()
-        r.incr('visit_count')
-        count = r.get('visit_count')
-        return JsonResponse({'count': int(count)})
+        try:
+            r = get_redis_connection()
+            count = r.incr('visit_count')
+            logger.info(f"Incremented visit count to: {count}")
+            return JsonResponse({'count': int(count)})
+        except Exception as e:
+            logger.error(f"Error incrementing visit count: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PushView(View):
@@ -60,12 +76,14 @@ class PushView(View):
             r = get_redis_connection()
             r.rpush(REDIS_QUEUE_NAME, value)
             length = r.llen(REDIS_QUEUE_NAME)
+            logger.info(f"Pushed {value} to queue, current length: {length}")
             return JsonResponse({
                 "status": "success",
                 "message": f"Pushed {value} to queue",
                 "queue_length": length
             })
         except Exception as e:
+            logger.error(f"Error pushing to queue: {str(e)}")
             return JsonResponse({
                 "status": "error",
                 "message": str(e)
