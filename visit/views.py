@@ -4,12 +4,27 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import redis
 import os
+from urllib.parse import urlparse
+
+def parse_redis_url(url):
+    """Parse Redis URL into host and port."""
+    if not url:
+        raise ValueError("REDIS_HOST environment variable is required")
+    
+    if url.startswith('tcp://'):
+        parsed = urlparse(url)
+        host = parsed.hostname
+        port = parsed.port or 6379
+        return host, port
+    return url, int(os.getenv('REDIS_PORT', '6379'))
 
 # Redis 設定
-REDIS_HOST = os.getenv('REDIS_HOST', '138.2.46.52')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 30678))
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', 'RedisPassword123')
-QUEUE_NAME = os.getenv('REDIS_QUEUE_NAME', 'increment_queue')
+REDIS_HOST, REDIS_PORT = parse_redis_url(os.getenv('REDIS_HOST'))
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+REDIS_QUEUE_NAME = os.getenv('REDIS_QUEUE_NAME')
+
+if not all([REDIS_HOST, REDIS_PASSWORD, REDIS_QUEUE_NAME]):
+    raise ValueError("Missing required Redis environment variables")
 
 def get_redis_connection():
     try:
@@ -43,8 +58,8 @@ class PushView(View):
         try:
             value = int(request.POST.get('value', 1))
             r = get_redis_connection()
-            r.rpush(QUEUE_NAME, value)
-            length = r.llen(QUEUE_NAME)
+            r.rpush(REDIS_QUEUE_NAME, value)
+            length = r.llen(REDIS_QUEUE_NAME)
             return JsonResponse({
                 "status": "success",
                 "message": f"Pushed {value} to queue",
