@@ -1,5 +1,5 @@
 # 使用官方 Python 映像作為基礎映像
-FROM python:3.12-slim
+FROM python:3.12-slim as producer
 
 # 設定工作目錄
 WORKDIR /app
@@ -51,3 +51,23 @@ EXPOSE 8000
 
 # 啟動命令
 CMD ["sh", "-c", "poetry run python manage.py runserver 0.0.0.0:8000"]
+
+# Consumer 服務
+FROM python:3.11-slim as consumer
+
+WORKDIR /app
+
+# 安裝依賴
+RUN pip install redis requests
+
+# 拷貝 consumer.py
+COPY visit/consumer.py /app/consumer.py
+
+# 設定環境變數
+ENV REDIS_HOST=${REDIS_HOST}
+ENV REDIS_PORT=${REDIS_CUSTOM_PORT}
+ENV REDIS_PASSWORD=${REDIS_PASSWORD}
+ENV REDIS_QUEUE_NAME=${REDIS_QUEUE_NAME}
+ENV API_URL=http://voyeur:8000/voyeur/increment/
+
+CMD ["python", "-u", "/app/consumer.py"]

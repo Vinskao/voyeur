@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voyeur-consumer
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: voyeur-consumer
+  template:
+    metadata:
+      labels:
+        app: voyeur-consumer
+    spec:
+      containers:
+      - name: voyeur-consumer
+        image: python:3.11-slim
+        command: ["python"]
+        args: ["-u", "/app/consumer.py"]
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: redis-password
+        - name: REDIS_QUEUE_NAME
+          value: "increment_queue"
+        - name: API_URL
+          value: "http://voyeur:8000/voyeur/increment/"
+        volumeMounts:
+        - name: app-volume
+          mountPath: /app
+      volumes:
+      - name: app-volume
+        configMap:
+          name: voyeur-consumer-code

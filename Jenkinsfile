@@ -53,7 +53,8 @@ pipeline {
         disableConcurrentBuilds()
     }
     environment {
-        DOCKER_IMAGE = 'papakao/voyeur'
+        DOCKER_IMAGE_PRODUCER = 'papakao/voyeur-producer'
+        DOCKER_IMAGE_CONSUMER = 'papakao/voyeur-consumer'
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
     stages {
@@ -100,7 +101,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image with BuildKit') {
+        stage('Build Docker Images') {
             steps {
                 container('docker') {
                     script {
@@ -119,16 +120,11 @@ pipeline {
                             string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
                         ]) {
                             sh '''
-                                cd /home/jenkins/agent/workspace/VOYEUR/voyeur-deploy
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-                                # 確認 Dockerfile 存在
-                                ls -la
-                                if [ ! -f "Dockerfile" ]; then
-                                    echo "Error: Dockerfile not found!"
-                                    exit 1
-                                fi
-                                # 構建 Docker 鏡像
+                                
+                                # 構建並推送 Producer 鏡像
                                 docker build \
+                                    --target producer \
                                     --build-arg BUILDKIT_INLINE_CACHE=1 \
                                     --build-arg MONGODB_URI="${MONGODB_URI}" \
                                     --build-arg MONGODB_USERNAME="${MONGODB_USERNAME}" \
@@ -142,25 +138,28 @@ pipeline {
                                     --build-arg REDIS_CUSTOM_PORT="${REDIS_CUSTOM_PORT}" \
                                     --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
                                     --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
-                                    --cache-from ${DOCKER_IMAGE}:latest \
-                                    -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
-                                    -t ${DOCKER_IMAGE}:latest \
+                                    --cache-from ${DOCKER_IMAGE_PRODUCER}:latest \
+                                    -t ${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG} \
+                                    -t ${DOCKER_IMAGE_PRODUCER}:latest \
                                     .
-                                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                                docker push ${DOCKER_IMAGE}:latest
+                                docker push ${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG}
+                                docker push ${DOCKER_IMAGE_PRODUCER}:latest
+                                
+                                # 構建並推送 Consumer 鏡像
+                                docker build \
+                                    --target consumer \
+                                    --build-arg REDIS_HOST="${REDIS_HOST}" \
+                                    --build-arg REDIS_CUSTOM_PORT="${REDIS_CUSTOM_PORT}" \
+                                    --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
+                                    --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
+                                    --cache-from ${DOCKER_IMAGE_CONSUMER}:latest \
+                                    -t ${DOCKER_IMAGE_CONSUMER}:${DOCKER_TAG} \
+                                    -t ${DOCKER_IMAGE_CONSUMER}:latest \
+                                    .
+                                docker push ${DOCKER_IMAGE_CONSUMER}:${DOCKER_TAG}
+                                docker push ${DOCKER_IMAGE_CONSUMER}:latest
                             '''
                         }
-                    }
-                }
-            }
-        }
-
-        stage('Debug Environment') {
-            steps {
-                container('kubectl') {
-                    script {
-                        echo "=== Listing all environment variables ==="
-                        sh 'printenv | sort'
                     }
                 }
             }
@@ -189,9 +188,13 @@ pipeline {
                                     envsubst < k8s/deployment.yaml > k8s/deployment.yaml.tmp
                                     mv k8s/deployment.yaml.tmp k8s/deployment.yaml
                                     
-                                    # 部署到 Kubernetes
+                                    # 部署 Producer
                                     kubectl apply -f k8s/deployment.yaml
                                     kubectl rollout restart deployment voyeur
+                                    
+                                    # 部署 Consumer
+                                    kubectl apply -f k8s/voyeur-consumer.yaml
+                                    kubectl rollout restart deployment voyeur-consumer
                                 '''
                             }
                         }
