@@ -61,7 +61,7 @@ WORKDIR /app
 RUN pip install redis requests
 
 # 拷貝 consumer.py
-COPY visit/consumer.py /app/consumer.py
+COPY consumer/consumer.py /app/consumer.py
 
 # 設定環境變數
 ENV REDIS_HOST=${REDIS_HOST}
