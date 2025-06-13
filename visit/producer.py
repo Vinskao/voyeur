@@ -2,14 +2,19 @@
 
 import redis
 import sys
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Redis 設定
-REDIS_HOST = '138.2.46.52'
-REDIS_PORT = 30678
-REDIS_PASSWORD = 'RedisPassword123'
-QUEUE_NAME = 'increment_queue'
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = int(os.getenv('REDIS_CUSTOM_PORT'))
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+QUEUE_NAME = os.getenv('REDIS_QUEUE_NAME')
 
 app = FastAPI()
 
