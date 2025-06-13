@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: voyeur-consumer
-        image: python:3.11-slim
+        image: papakao/voyeur-consumer:latest
         command: ["python"]
         args: ["-u", "/app/consumer.py"]
         env:
