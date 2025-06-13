@@ -31,7 +31,7 @@ spec:
         - name: REDIS_QUEUE_NAME
           value: "increment_queue"
         - name: API_URL
-          value: "http://voyeur:8000/voyeur/increment/"
+          value: "http://voyeur/voyeur/increment/"
         volumeMounts:
         - name: app-volume
           mountPath: /app
