@@ -6,6 +6,8 @@ pipeline {
                 kind: Pod
                 spec:
                   serviceAccountName: jenkins-admin
+                  imagePullSecrets:
+                  - name: dockerhub-credentials
                   containers:
                   - name: python
                     image: python:3.12
@@ -164,31 +166,56 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    withKubeConfig([credentialsId: 'kubeconfig-secret']) {
+                    withCredentials([
+                        string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
+                        string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
+                        string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
+                        string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
+                        string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
+                        string(credentialsId: 'REDIS_QUEUE_VOYEUR', variable: 'REDIS_QUEUE_VOYEUR'),
+                        string(credentialsId: 'WEBSOCKET_TYMB', variable: 'WEBSOCKET_TYMB'),
+                        usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')
+                    ]) {
                         script {
-                            withCredentials([
-                                string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
-                                string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
-                                string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
-                                string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
-                                string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
-                                string(credentialsId: 'REDIS_QUEUE_VOYEUR', variable: 'REDIS_QUEUE_VOYEUR'),
-                                string(credentialsId: 'WEBSOCKET_TYMB', variable: 'WEBSOCKET_TYMB')
-                            ]) {
-                                sh '''
-                                    # 替換 deployment.yaml 中的環境變數
-                                    envsubst < k8s/deployment.yaml > k8s/deployment.yaml.tmp
-                                    mv k8s/deployment.yaml.tmp k8s/deployment.yaml
-                                    
-                                    # 部署 Producer
-                                    kubectl apply -f k8s/deployment.yaml
-                                    kubectl rollout restart deployment voyeur
-                                    
-                                    # 部署 Consumer
-                                    kubectl apply -f k8s/voyeur-consumer.yaml
-                                    kubectl rollout restart deployment voyeur-consumer
-                                '''
-                            }
+                            sh '''
+                                set -e
+
+                                # 確認叢集可用（使用 Pod SA jenkins-admin）
+                                kubectl cluster-info
+
+                                # 確保 default namespace 有 imagePullSecret（若不存在則建立/更新）
+                                kubectl create secret docker-registry dockerhub-credentials \
+                                  --docker-server=https://index.docker.io/v1/ \
+                                  --docker-username="${DOCKER_USERNAME}" \
+                                  --docker-password="${DOCKER_PASSWORD}" \
+                                  --docker-email="none" \
+                                  -n default \
+                                  --dry-run=client -o yaml | kubectl apply -f -
+
+                                # 檢查檔案
+                                ls -la k8s/
+
+                                # 產生並套用 Producer 的 Secret + Deployment（k8s/deployment.yaml 內含 Secret 與 Deployment）
+                                envsubst < k8s/deployment.yaml > k8s/deployment.effective.yaml
+                                kubectl apply -f k8s/deployment.effective.yaml
+
+                                # 若 Deployment 已存在則更新 image，確保使用新 tag
+                                if kubectl get deployment voyeur -n default >/dev/null 2>&1; then
+                                  kubectl set image deployment/voyeur voyeur=${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG} -n default
+                                fi
+                                kubectl rollout status deployment/voyeur -n default
+
+                                # Consumer：存在則滾動更新，否則套用 yaml
+                                if kubectl get deployment voyeur-consumer -n default >/dev/null 2>&1; then
+                                  kubectl set image deployment/voyeur-consumer voyeur-consumer=${DOCKER_IMAGE_CONSUMER}:${DOCKER_TAG} -n default
+                                else
+                                  kubectl apply -f k8s/voyeur-consumer.yaml
+                                fi
+                                kubectl rollout status deployment/voyeur-consumer -n default
+
+                                # 檢視狀態
+                                kubectl get deploy,po,svc -n default
+                            '''
                         }
                     }
                 }
