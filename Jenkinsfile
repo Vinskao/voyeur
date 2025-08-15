@@ -68,9 +68,6 @@ pipeline {
                     script {
                         withCredentials([
                             string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
-                            string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
-                            string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
-                            string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                             string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                             string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
@@ -111,9 +108,6 @@ pipeline {
                         withCredentials([
                             usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD'),
                             string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
-                            string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
-                            string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
-                            string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                             string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                             string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
@@ -129,9 +123,6 @@ pipeline {
                                     --target producer \
                                     --build-arg BUILDKIT_INLINE_CACHE=1 \
                                     --build-arg MONGODB_URI="${MONGODB_URI}" \
-                                    --build-arg MONGODB_USERNAME="${MONGODB_USERNAME}" \
-                                    --build-arg MONGODB_PASSWORD="${MONGODB_PASSWORD}" \
-                                    --build-arg MONGODB_AUTH_SOURCE="${MONGODB_AUTH_SOURCE}" \
                                     --build-arg MONGODB_DB="${MONGODB_DB}" \
                                     --build-arg MONGODB_COLLECTION="${MONGODB_COLLECTION}" \
                                     --build-arg VOYEUR_SECRET_KEY="${VOYEUR_SECRET_KEY}" \
@@ -177,9 +168,6 @@ pipeline {
                         script {
                             withCredentials([
                                 string(credentialsId: 'MONGODB_URI', variable: 'MONGODB_URI'),
-                                string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
-                                string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
-                                string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
                                 string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                                 string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                                 string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),

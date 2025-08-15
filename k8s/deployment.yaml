@@ -42,21 +42,6 @@ spec:
             secretKeyRef:
               name: voyeur-secrets
               key: MONGODB_URI
-        - name: MONGODB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: voyeur-secrets
-              key: MONGODB_USERNAME
-        - name: MONGODB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: voyeur-secrets
-              key: MONGODB_PASSWORD
-        - name: MONGODB_AUTH_SOURCE
-          valueFrom:
-            secretKeyRef:
-              name: voyeur-secrets
-              key: MONGODB_AUTH_SOURCE
         - name: VOYEUR_SECRET_KEY
           valueFrom:
             secretKeyRef:
