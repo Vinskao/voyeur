@@ -4,7 +4,7 @@ import logging
 import json
 import websocket
 from .store import store_message_in_mongo
-from .config import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_URL
+from .config import WEBSOCKET_TYMB
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +14,28 @@ up_data = []
 
 def connect_metrics():
     """Connect to the STOMP server and subscribe to a topic."""
-    conn = stomp.Connection([(WEBSOCKET_HOST, WEBSOCKET_PORT)])
+    # 解析 WebSocket URL 來獲取 host 和 port
+    if WEBSOCKET_TYMB.startswith('ws://'):
+        url = WEBSOCKET_TYMB[5:]  # Remove 'ws://'
+    elif WEBSOCKET_TYMB.startswith('wss://'):
+        url = WEBSOCKET_TYMB[6:]  # Remove 'wss://'
+    else:
+        url = WEBSOCKET_TYMB
+    
+    # 提取 host 和 port
+    if '/' in url:
+        host_port = url.split('/')[0]
+    else:
+        host_port = url
+    
+    if ':' in host_port:
+        host, port = host_port.split(':')
+        port = int(port)
+    else:
+        host = host_port
+        port = 80 if WEBSOCKET_TYMB.startswith('ws://') else 443
+    
+    conn = stomp.Connection([(host, port)])
 
     while True:
         try:
@@ -27,7 +48,7 @@ def connect_metrics():
             logger.error(f"WebSocket connection failed: {e}")
             time.sleep(5)  # 連線失敗時，等待 5 秒重試
             conn.disconnect()
-            conn = stomp.Connection([(WEBSOCKET_HOST, WEBSOCKET_PORT)])
+            conn = stomp.Connection([(host, port)])
 
 def on_message(ws, message):
     """Handle messages received from the WebSocket server."""
@@ -83,7 +104,7 @@ def on_open(ws):
     logger.info("Subscribed to /topic/metrics")
 
 def start_websocket():
-    ws = websocket.WebSocketApp(WEBSOCKET_URL,
+    ws = websocket.WebSocketApp(WEBSOCKET_TYMB,
                               on_open=on_open,
                               on_message=on_message,
                               on_error=on_error,

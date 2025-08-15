@@ -17,6 +17,9 @@ websocket-client = "^1.7.0"
 redis = "^6.2.0"
 fastapi = "^0.115.12"
 uvicorn = "^0.34.3"
+sockjs-tornado = "^1.0.7"
+tornado = "^6.4"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.1.1"
