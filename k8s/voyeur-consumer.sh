@@ -1,10 +1,11 @@
+cat <<'EOF' | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: voyeur-consumer
   namespace: default
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: voyeur-consumer
@@ -34,3 +35,4 @@ spec:
           value: "increment_queue"
         - name: API_URL
           value: "http://voyeur/voyeur/increment/"
+EOF

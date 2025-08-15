@@ -143,7 +143,7 @@ pipeline {
                                 docker push ${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG}
                                 docker push ${DOCKER_IMAGE_PRODUCER}:latest
                                 
-                                # 構建並推送 Consumer 鏡像
+                                # 構建並推送 Consumer 鏡像（僅建置與推送，不由 Jenkins 部署）
                                 docker build \
                                     --target consumer \
                                     --build-arg REDIS_HOST="${REDIS_HOST}" \
@@ -179,11 +179,9 @@ pipeline {
                         script {
                             sh '''
                                 set -e
-
-                                # 確認叢集可用（使用 Pod SA jenkins-admin）
                                 kubectl cluster-info
 
-                                # 確保 default namespace 有 imagePullSecret（若不存在則建立/更新）
+                                # 確保 default namespace 有 imagePullSecret
                                 kubectl create secret docker-registry dockerhub-credentials \
                                   --docker-server=https://index.docker.io/v1/ \
                                   --docker-username="${DOCKER_USERNAME}" \
@@ -192,28 +190,17 @@ pipeline {
                                   -n default \
                                   --dry-run=client -o yaml | kubectl apply -f -
 
-                                # 檢查檔案
-                                ls -la k8s/
-
-                                # 產生並套用 Producer 的 Secret + Deployment（k8s/deployment.yaml 內含 Secret 與 Deployment）
+                                # 只部署/更新 Producer
                                 envsubst < k8s/deployment.yaml > k8s/deployment.effective.yaml
                                 kubectl apply -f k8s/deployment.effective.yaml
-
-                                # 若 Deployment 已存在則更新 image，確保使用新 tag
                                 if kubectl get deployment voyeur -n default >/dev/null 2>&1; then
                                   kubectl set image deployment/voyeur voyeur=${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG} -n default
                                 fi
                                 kubectl rollout status deployment/voyeur -n default
 
-                                # Consumer：存在則滾動更新，否則套用 yaml
-                                if kubectl get deployment voyeur-consumer -n default >/dev/null 2>&1; then
-                                  kubectl set image deployment/voyeur-consumer voyeur-consumer=${DOCKER_IMAGE_CONSUMER}:${DOCKER_TAG} -n default
-                                else
-                                  kubectl apply -f k8s/voyeur-consumer.yaml
-                                fi
-                                kubectl rollout status deployment/voyeur-consumer -n default
+                                # 不再由 Jenkins 管理 consumer（由使用者手動在 k8s 建立）
+                                echo "Skip consumer deployment per request."
 
-                                # 檢視狀態
                                 kubectl get deploy,po,svc -n default
                             '''
                         }
