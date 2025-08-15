@@ -5,9 +5,6 @@ metadata:
 type: Opaque
 stringData:
   MONGODB_URI: "${MONGODB_URI}"
-  MONGODB_USERNAME: "${MONGODB_USERNAME}"
-  MONGODB_PASSWORD: "${MONGODB_PASSWORD}"
-  MONGODB_AUTH_SOURCE: "${MONGODB_AUTH_SOURCE}"
   VOYEUR_SECRET_KEY: "${VOYEUR_SECRET_KEY}"
   DJANGO_HOST: "${DJANGO_HOST}"
   DJANGO_ENV: "${DJANGO_ENV}"
@@ -15,6 +12,7 @@ stringData:
   REDIS_CUSTOM_PORT: "${REDIS_CUSTOM_PORT}"
   REDIS_PASSWORD: "${REDIS_PASSWORD}"
   REDIS_QUEUE_VOYEUR: "${REDIS_QUEUE_VOYEUR}"
+  WEBSOCKET_TYMB: "${WEBSOCKET_TYMB}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -110,18 +108,11 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      more_set_headers "X-Content-Type-Options: nosniff";
-      more_set_headers "X-Frame-Options: DENY";
-      more_set_headers "X-XSS-Protection: 1; mode=block";
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
-    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    cert-manager.io/certificate-name: peoplesystem-tls
 spec:
   ingressClassName: nginx
   tls:
