@@ -13,6 +13,8 @@ spec:
       labels:
         app: voyeur-consumer
     spec:
+      imagePullSecrets:
+      - name: dockerhub-credentials
       containers:
       - name: voyeur-consumer
         image: papakao/voyeur-consumer:latest
@@ -32,10 +34,3 @@ spec:
           value: "increment_queue"
         - name: API_URL
           value: "http://voyeur/voyeur/increment/"
-        volumeMounts:
-        - name: app-volume
-          mountPath: /app
-      volumes:
-      - name: app-volume
-        configMap:
-          name: voyeur-consumer-code
