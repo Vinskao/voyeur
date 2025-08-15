@@ -56,6 +56,10 @@ pipeline {
         DOCKER_IMAGE_PRODUCER = 'papakao/voyeur-producer'
         DOCKER_IMAGE_CONSUMER = 'papakao/voyeur-consumer'
         DOCKER_TAG = "${BUILD_NUMBER}"
+        DJANGO_HOST = 'peoplesystem.tatdvsonorth.com'
+        DJANGO_ENV = 'production'
+        MONGODB_DB = 'palais'
+        MONGODB_COLLECTION = 'tyf_visits'
     }
     stages {
         stage('Clone and Setup') {
@@ -67,13 +71,12 @@ pipeline {
                             string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
                             string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
-                            string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                            string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                             string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                             string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
-                            string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
+                            string(credentialsId: 'REDIS_QUEUE_VOYEUR', variable: 'REDIS_QUEUE_VOYEUR'),
+                            string(credentialsId: 'WEBSOCKET_TYMB', variable: 'WEBSOCKET_TYMB')
                         ]) {
                             sh '''
                                 # 確認 Dockerfile 存在
@@ -111,13 +114,12 @@ pipeline {
                             string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
                             string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
                             string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
-                            string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                            string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                            string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                             string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                             string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                             string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
-                            string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
+                            string(credentialsId: 'REDIS_QUEUE_VOYEUR', variable: 'REDIS_QUEUE_VOYEUR'),
+                            string(credentialsId: 'WEBSOCKET_TYMB', variable: 'WEBSOCKET_TYMB')
                         ]) {
                             sh '''
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
@@ -130,14 +132,17 @@ pipeline {
                                     --build-arg MONGODB_USERNAME="${MONGODB_USERNAME}" \
                                     --build-arg MONGODB_PASSWORD="${MONGODB_PASSWORD}" \
                                     --build-arg MONGODB_AUTH_SOURCE="${MONGODB_AUTH_SOURCE}" \
-                                    --build-arg DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
+                                    --build-arg MONGODB_DB="${MONGODB_DB}" \
+                                    --build-arg MONGODB_COLLECTION="${MONGODB_COLLECTION}" \
+                                    --build-arg VOYEUR_SECRET_KEY="${VOYEUR_SECRET_KEY}" \
                                     --build-arg DJANGO_HOST="${DJANGO_HOST}" \
-                                    --build-arg DJANGO_ENV="production" \
+                                    --build-arg DJANGO_ENV="${DJANGO_ENV}" \
                                     --build-arg DJANGO_ALLOWED_HOSTS="peoplesystem.tatdvsonorth.com" \
                                     --build-arg REDIS_HOST="${REDIS_HOST}" \
                                     --build-arg REDIS_CUSTOM_PORT="${REDIS_CUSTOM_PORT}" \
                                     --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
-                                    --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
+                                    --build-arg REDIS_QUEUE_VOYEUR="${REDIS_QUEUE_VOYEUR}" \
+                                    --build-arg WEBSOCKET_TYMB="${WEBSOCKET_TYMB}" \
                                     --cache-from ${DOCKER_IMAGE_PRODUCER}:latest \
                                     -t ${DOCKER_IMAGE_PRODUCER}:${DOCKER_TAG} \
                                     -t ${DOCKER_IMAGE_PRODUCER}:latest \
@@ -151,7 +156,7 @@ pipeline {
                                     --build-arg REDIS_HOST="${REDIS_HOST}" \
                                     --build-arg REDIS_CUSTOM_PORT="${REDIS_CUSTOM_PORT}" \
                                     --build-arg REDIS_PASSWORD="${REDIS_PASSWORD}" \
-                                    --build-arg REDIS_QUEUE_NAME="${REDIS_QUEUE_NAME}" \
+                                    --build-arg REDIS_QUEUE_VOYEUR="${REDIS_QUEUE_VOYEUR}" \
                                     --cache-from ${DOCKER_IMAGE_CONSUMER}:latest \
                                     -t ${DOCKER_IMAGE_CONSUMER}:${DOCKER_TAG} \
                                     -t ${DOCKER_IMAGE_CONSUMER}:latest \
@@ -175,13 +180,12 @@ pipeline {
                                 string(credentialsId: 'MONGODB_USERNAME', variable: 'MONGODB_USERNAME'),
                                 string(credentialsId: 'MONGODB_PASSWORD', variable: 'MONGODB_PASSWORD'),
                                 string(credentialsId: 'MONGODB_AUTH_SOURCE', variable: 'MONGODB_AUTH_SOURCE'),
-                                string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY'),
-                                string(credentialsId: 'DJANGO_HOST', variable: 'DJANGO_HOST'),
-                                string(credentialsId: 'DJANGO_ENV', variable: 'DJANGO_ENV'),
+                                string(credentialsId: 'VOYEUR_SECRET_KEY', variable: 'VOYEUR_SECRET_KEY'),
                                 string(credentialsId: 'REDIS_HOST', variable: 'REDIS_HOST'),
                                 string(credentialsId: 'REDIS_CUSTOM_PORT', variable: 'REDIS_CUSTOM_PORT'),
                                 string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD'),
-                                string(credentialsId: 'REDIS_QUEUE_NAME', variable: 'REDIS_QUEUE_NAME')
+                                string(credentialsId: 'REDIS_QUEUE_VOYEUR', variable: 'REDIS_QUEUE_VOYEUR'),
+                                string(credentialsId: 'WEBSOCKET_TYMB', variable: 'WEBSOCKET_TYMB')
                             ]) {
                                 sh '''
                                     # 替換 deployment.yaml 中的環境變數

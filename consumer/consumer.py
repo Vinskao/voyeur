@@ -6,7 +6,7 @@ import requests
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
-QUEUE_NAME = os.getenv("REDIS_QUEUE_NAME")
+QUEUE_NAME = os.getenv("REDIS_QUEUE_VOYEUR")
 
 # API 設定
 API_URL = os.getenv("API_URL")

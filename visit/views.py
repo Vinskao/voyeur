@@ -24,9 +24,9 @@ def parse_redis_url(url):
 # Redis 設定
 REDIS_HOST, REDIS_PORT = parse_redis_url(os.getenv('REDIS_HOST'))
 REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
-REDIS_QUEUE_NAME = os.getenv('REDIS_QUEUE_NAME')
+REDIS_QUEUE_VOYEUR = os.getenv('REDIS_QUEUE_VOYEUR')
 
-if not all([REDIS_HOST, REDIS_PASSWORD, REDIS_QUEUE_NAME]):
+if not all([REDIS_HOST, REDIS_PASSWORD, REDIS_QUEUE_VOYEUR]):
     raise ValueError("Missing required Redis environment variables")
 
 def get_redis_connection():
@@ -74,8 +74,8 @@ class PushView(View):
         try:
             value = int(request.POST.get('value', 1))
             r = get_redis_connection()
-            r.rpush(REDIS_QUEUE_NAME, value)
-            length = r.llen(REDIS_QUEUE_NAME)
+            r.rpush(REDIS_QUEUE_VOYEUR, value)
+            length = r.llen(REDIS_QUEUE_VOYEUR)
             logger.info(f"Pushed {value} to queue, current length: {length}")
             return JsonResponse({
                 "status": "success",

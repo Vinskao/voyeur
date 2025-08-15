@@ -4,7 +4,7 @@ import logging
 import json
 import websocket
 from .store import store_message_in_mongo
-from .config import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PATH
+from .config import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_URL
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO)
@@ -83,8 +83,7 @@ def on_open(ws):
     logger.info("Subscribed to /topic/metrics")
 
 def start_websocket():
-    ws_url = f"ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}{WEBSOCKET_PATH}"
-    ws = websocket.WebSocketApp(ws_url,
+    ws = websocket.WebSocketApp(WEBSOCKET_URL,
                               on_open=on_open,
                               on_message=on_message,
                               on_error=on_error,

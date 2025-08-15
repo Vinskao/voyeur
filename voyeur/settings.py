@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-default-key-for-development')
+SECRET_KEY = os.getenv('VOYEUR_SECRET_KEY', 'django-insecure-development-key-change-in-production')
 logger.debug(f"SECRET_KEY is set: {bool(SECRET_KEY)}")
 
 # Get the host from environment or use default
@@ -48,9 +48,39 @@ MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
 MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
 
 # WebSocket settings
-WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')
-WEBSOCKET_PORT = int(os.getenv('WEBSOCKET_PORT', '8080'))
-WEBSOCKET_PATH = os.getenv('WEBSOCKET_PATH', '/tymb/metrics')
+WEBSOCKET_TYMB = os.getenv('WEBSOCKET_TYMB', 'ws://localhost:8080/tymb/')
+
+# Parse WebSocket URL to extract components
+def parse_websocket_url(url):
+    """Parse WebSocket URL to extract host, port, and path"""
+    if url.startswith('ws://'):
+        url = url[5:]  # Remove 'ws://'
+    elif url.startswith('wss://'):
+        url = url[6:]  # Remove 'wss://'
+    
+    # Split host:port and path
+    if '/' in url:
+        host_port, path = url.split('/', 1)
+        path = '/' + path
+    else:
+        host_port = url
+        path = '/'
+    
+    # Split host and port
+    if ':' in host_port:
+        host, port = host_port.split(':')
+        port = int(port)
+    else:
+        host = host_port
+        port = 80 if url.startswith('ws://') else 443
+    
+    return host, port, path
+
+# Extract components from WEBSOCKET_TYMB
+WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PATH = parse_websocket_url(WEBSOCKET_TYMB)
+
+# Full WebSocket URL with /metrics hardcoded
+WEBSOCKET_URL = WEBSOCKET_TYMB + 'metrics'
 
 # Application definition
 INSTALLED_APPS = [
@@ -59,17 +89,18 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'visit',
+    'django.contrib.staticfiles',
     'rest_framework',
     'drf_yasg',
     'corsheaders',
+    'visit',
     'metrics',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # 必須放在最前面
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -78,12 +109,10 @@ MIDDLEWARE = [
 ]
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
 CORS_ALLOWED_ORIGINS = [
-    "https://peoplesystem.tatdvsonorth.com",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -163,6 +192,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'voyeur.wsgi.application'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
 
 # Database
 DATABASES = {

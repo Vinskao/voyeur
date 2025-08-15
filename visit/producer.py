@@ -14,7 +14,7 @@ load_dotenv()
 REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = int(os.getenv('REDIS_CUSTOM_PORT'))
 REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
-QUEUE_NAME = os.getenv('REDIS_QUEUE_NAME')
+QUEUE_NAME = os.getenv('REDIS_QUEUE_VOYEUR')
 
 app = FastAPI()
 

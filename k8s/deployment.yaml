@@ -8,20 +8,19 @@ stringData:
   MONGODB_USERNAME: "${MONGODB_USERNAME}"
   MONGODB_PASSWORD: "${MONGODB_PASSWORD}"
   MONGODB_AUTH_SOURCE: "${MONGODB_AUTH_SOURCE}"
-  DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY}"
+  VOYEUR_SECRET_KEY: "${VOYEUR_SECRET_KEY}"
   DJANGO_HOST: "${DJANGO_HOST}"
   DJANGO_ENV: "${DJANGO_ENV}"
   REDIS_HOST: "${REDIS_HOST}"
   REDIS_CUSTOM_PORT: "${REDIS_CUSTOM_PORT}"
   REDIS_PASSWORD: "${REDIS_PASSWORD}"
-  REDIS_QUEUE_NAME: "${REDIS_QUEUE_NAME}"
+  REDIS_QUEUE_VOYEUR: "${REDIS_QUEUE_VOYEUR}"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: voyeur
-  labels:
-    app.kubernetes.io/name: voyeur
+  namespace: default
 spec:
   replicas: 1
   selector:
@@ -34,7 +33,7 @@ spec:
     spec:
       containers:
       - name: voyeur
-        image: papakao/voyeur:latest
+        image: papakao/voyeur-producer:latest
         ports:
         - containerPort: 8000
         env:
@@ -58,11 +57,11 @@ spec:
             secretKeyRef:
               name: voyeur-secrets
               key: MONGODB_AUTH_SOURCE
-        - name: DJANGO_SECRET_KEY
+        - name: VOYEUR_SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: voyeur-secrets
-              key: DJANGO_SECRET_KEY
+              key: VOYEUR_SECRET_KEY
         - name: DJANGO_DEBUG
           value: "False"
         - name: DJANGO_ALLOWED_HOSTS
@@ -92,17 +91,16 @@ spec:
             secretKeyRef:
               name: voyeur-secrets
               key: REDIS_PASSWORD
-        - name: REDIS_QUEUE_NAME
+        - name: REDIS_QUEUE_VOYEUR
           valueFrom:
             secretKeyRef:
               name: voyeur-secrets
-              key: REDIS_QUEUE_NAME
-        - name: WEBSOCKET_HOST
-          value: "peoplesystem.tatdvsonorth.com"
-        - name: WEBSOCKET_PORT
-          value: "443"
-        - name: WEBSOCKET_PATH
-          value: "/tymb/metrics"
+              key: REDIS_QUEUE_VOYEUR
+        - name: WEBSOCKET_TYMB
+          valueFrom:
+            secretKeyRef:
+              name: voyeur-secrets
+              key: WEBSOCKET_TYMB
 ---
 apiVersion: v1
 kind: Service

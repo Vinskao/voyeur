@@ -28,7 +28,7 @@ spec:
             secretKeyRef:
               name: redis-secret
               key: redis-password
-        - name: REDIS_QUEUE_NAME
+        - name: REDIS_QUEUE_VOYEUR
           value: "increment_queue"
         - name: API_URL
           value: "http://voyeur/voyeur/increment/"

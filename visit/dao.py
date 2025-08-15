@@ -1,20 +1,29 @@
 from pymongo import MongoClient
 from datetime import datetime
+import os
 from .config import get_mongo_config
 
 class VisitCountDAO:
     def __init__(self):
         config = get_mongo_config()
-        self.client = MongoClient(
-            config['connection_string'],
-            username=config['username'],
-            password=config['password'],
-            authSource=config['auth_source'],
-            tls=True,
-            tlsAllowInvalidCertificates=True
-        )
-        self.db = self.client['voyeur']
-        self.collection = self.db['tyf_visits']
+        if config.get('use_uri_credentials_only'):
+            # Credentials are embedded in the URI; avoid passing username/password separately
+            self.client = MongoClient(
+                config['connection_string'],
+                tls=True,
+                tlsAllowInvalidCertificates=True
+            )
+        else:
+            self.client = MongoClient(
+                config['connection_string'],
+                username=config['username'],
+                password=config['password'],
+                authSource=config['auth_source'],
+                tls=True,
+                tlsAllowInvalidCertificates=True
+            )
+        self.db = self.client[os.getenv('MONGODB_DB', 'palais')]
+        self.collection = self.db[os.getenv('MONGODB_COLLECTION', 'tyf_visits')]
 
     def get_count(self):
         """Get the current visit count"""
