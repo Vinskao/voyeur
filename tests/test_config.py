@@ -24,13 +24,18 @@ def test_websocket_config():
         print(f"📈 Metrics WEBSOCKET_TYMB: {WEBSOCKET_TYMB}")
         
         # 驗證 URL 格式
-        if WEBSOCKET_TYMB == "ws://peoplesystem.tatdvsonorth.com/tymb/ws/websocket":
-            print("✅ WebSocket URL 格式正確")
+        if WEBSOCKET_TYMB == "ws://localhost:8080/tymb/metrics":
+            print("✅ WebSocket URL 格式正確 (本地端點)")
         else:
             print("❌ WebSocket URL 格式不正確")
             
     except ImportError as e:
         print(f"❌ 無法導入 metrics 配置: {e}")
+    
+    print("\n📊 預期的數據格式:")
+    print("- 端點: ws://localhost:8080/tymb/metrics")
+    print("- 格式: JSON (Spring Boot Actuator metrics)")
+    print("- 包含: http.server.requests, system.cpu.usage, jvm.memory.used 等")
     
     print("\n✅ 配置測試完成")
 

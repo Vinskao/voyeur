@@ -34,6 +34,13 @@ spec:
         image: papakao/voyeur-producer:latest
         ports:
         - containerPort: 8000
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
         env:
         - name: MONGODB_URI
           valueFrom:

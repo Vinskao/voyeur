@@ -48,7 +48,7 @@ MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
 MONGODB_AUTH_SOURCE = os.getenv('MONGODB_AUTH_SOURCE', 'admin')
 
 # WebSocket settings
-WEBSOCKET_TYMB = os.getenv('WEBSOCKET_TYMB', 'ws://peoplesystem.tatdvsonorth.com/tymb/ws/websocket')
+WEBSOCKET_TYMB = os.getenv('WEBSOCKET_TYMB', 'ws://localhost:8080/tymb/')
 
 # Application definition
 INSTALLED_APPS = [

@@ -1,5 +1,4 @@
 import time
-import stomp
 import logging
 import json
 import websocket
@@ -12,101 +11,70 @@ logger = logging.getLogger(__name__)
 
 up_data = []
 
-def connect_metrics():
-    """Connect to the STOMP server and subscribe to a topic."""
-    # 解析 WebSocket URL 來獲取 host 和 port
-    if WEBSOCKET_TYMB.startswith('ws://'):
-        url = WEBSOCKET_TYMB[5:]  # Remove 'ws://'
-    elif WEBSOCKET_TYMB.startswith('wss://'):
-        url = WEBSOCKET_TYMB[6:]  # Remove 'wss://'
-    else:
-        url = WEBSOCKET_TYMB
-    
-    # 提取 host 和 port
-    if '/' in url:
-        host_port = url.split('/')[0]
-    else:
-        host_port = url
-    
-    if ':' in host_port:
-        host, port = host_port.split(':')
-        port = int(port)
-    else:
-        host = host_port
-        port = 80 if WEBSOCKET_TYMB.startswith('ws://') else 443
-    
-    conn = stomp.Connection([(host, port)])
-
-    while True:
-        try:
-            conn.connect(wait=True)
-            conn.subscribe(destination="/topic/metrics", id=1, ack="auto")
-            logger.info("Subscribed to /topic/metrics")
-            while True:
-                time.sleep(1)
-        except Exception as e:
-            logger.error(f"WebSocket connection failed: {e}")
-            time.sleep(5)  # 連線失敗時，等待 5 秒重試
-            conn.disconnect()
-            conn = stomp.Connection([(host, port)])
-
 def on_message(ws, message):
     """Handle messages received from the WebSocket server."""
-    logger.info(f"Received raw message: {message}")
+    logger.info(f"Received message: {message[:200]}...")  # 只顯示前200個字符
     
     if not message.strip():
         logger.warning("Received an empty message.")
         return
 
     try:
-        # 檢查是否是 STOMP MESSAGE 幀
-        if message.startswith("MESSAGE"):
-            # 提取內容部分（body）
-            body = message.split("\n\n")[1].strip()  # 獲取 body 部分
-            if body.endswith("\x00"):
-                body = body[:-1]  # 移除結尾的 \x00
+        # 直接解析 JSON 格式的 metrics 數據
+        data = json.loads(message)
+        up_data.append(data)
+        store_message_in_mongo(message)  # 儲存原始 JSON 訊息
+        logger.info("Saved metrics data to MongoDB")
+        
+        # 顯示一些關鍵指標
+        if 'data' in data and 'http.server.requests' in data['data']:
+            requests = data['data']['http.server.requests']
+            for measurement in requests.get('measurements', []):
+                if measurement.get('statistic') == 'COUNT':
+                    logger.info(f"HTTP Requests Count: {measurement.get('value', 0)}")
+        
+        if len(up_data) >= 10:
+            logger.info(f"Received {len(up_data)} messages")
+            up_data.clear()  # 清空緩存
             
-            # 解析 JSON
-            data = json.loads(body)
-            up_data.append(data)
-            store_message_in_mongo(body)  # 儲存原始 JSON 訊息
-            logger.info("Saved message to MongoDB")
-            
-            if len(up_data) == 10:
-                logger.info(f"Received 10 messages: {up_data}")
-        else:
-            logger.info(f"Ignoring non-MESSAGE frame: {message}")
     except json.JSONDecodeError as e:
-        logger.error(f"Error decoding message body: {e}")
+        logger.error(f"Error decoding JSON message: {e}")
+        logger.error(f"Raw message: {message}")
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         
 def on_error(ws, error):
     """Handle errors encountered during WebSocket communication."""
-    logger.error(f"Error: {error}")
+    logger.error(f"WebSocket Error: {error}")
 
 def on_close(ws, close_status_code, close_msg):
     """Handle the closing of the WebSocket connection."""
-    logger.info("Connection closed")
+    logger.info(f"WebSocket connection closed: {close_status_code} - {close_msg}")
 
 def on_open(ws):
     """Handle the opening of the WebSocket connection."""
-    logger.info("Connection opened")
-    
-    # 發送 STOMP CONNECT 幀
-    connect_msg = "CONNECT\naccept-version:1.2\n\n\x00"
-    ws.send(connect_msg)
-    logger.info("Sent STOMP CONNECT frame")
-
-    # 發送 STOMP SUBSCRIBE 幀
-    subscribe_msg = "SUBSCRIBE\nid:sub-0\ndestination:/topic/metrics\n\n\x00"
-    ws.send(subscribe_msg)
-    logger.info("Subscribed to /topic/metrics")
+    logger.info("WebSocket connection opened successfully")
+    websocket_url = WEBSOCKET_TYMB.rstrip('/') + '/metrics'
+    logger.info(f"Connected to: {websocket_url}")
 
 def start_websocket():
-    ws = websocket.WebSocketApp(WEBSOCKET_TYMB,
+    """Start WebSocket connection to receive metrics data."""
+    # 構建完整的 WebSocket URL，加上 metrics 路徑
+    websocket_url = WEBSOCKET_TYMB.rstrip('/') + '/metrics'
+    logger.info(f"Starting WebSocket connection to: {websocket_url}")
+    
+    ws = websocket.WebSocketApp(websocket_url,
                               on_open=on_open,
                               on_message=on_message,
                               on_error=on_error,
                               on_close=on_close)
-    ws.run_forever() 
+    
+    # 自動重連機制
+    while True:
+        try:
+            ws.run_forever()
+            logger.info("WebSocket connection lost, attempting to reconnect in 5 seconds...")
+            time.sleep(5)
+        except Exception as e:
+            logger.error(f"WebSocket error: {e}")
+            time.sleep(5) 

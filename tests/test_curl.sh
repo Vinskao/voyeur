@@ -1,9 +1,9 @@
 #!/bin/bash
 
-echo "🚀 測試 WebSocket 連接"
-echo "======================"
+echo "🚀 測試本地 WebSocket 連接"
+echo "=========================="
 
-WEBSOCKET_URL="ws://peoplesystem.tatdvsonorth.com/tymb/ws/websocket"
+WEBSOCKET_URL="ws://localhost:8080/tymb/metrics"
 
 echo "1. 測試 WebSocket 握手..."
 curl -s -w "HTTP Status: %{http_code}\n" \
@@ -15,10 +15,14 @@ curl -s -w "HTTP Status: %{http_code}\n" \
 
 echo -e "\n2. 測試 HTTP 連接..."
 curl -s -w "HTTP Status: %{http_code}\n" \
-  "http://peoplesystem.tatdvsonorth.com/tymb/ws"
+  "http://localhost:8080/tymb/metrics"
 
-echo -e "\n3. 測試 HTTPS 連接..."
+echo -e "\n3. 測試 Actuator 端點..."
 curl -s -w "HTTP Status: %{http_code}\n" \
-  "https://peoplesystem.tatdvsonorth.com/tymb/ws"
+  "http://localhost:8080/actuator/metrics"
+
+echo -e "\n4. 測試健康檢查..."
+curl -s -w "HTTP Status: %{http_code}\n" \
+  "http://localhost:8080/actuator/health"
 
 echo -e "\n✅ 測試完成"
