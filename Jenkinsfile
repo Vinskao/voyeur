@@ -97,8 +97,8 @@ pipeline {
                     sh '''
                         pip install poetry
                         poetry config virtualenvs.create false
-                        # Regenerate lockfile to match pyproject changes
-                        poetry lock --no-update
+                        # Regenerate lockfile to match pyproject changes (no interactive prompts)
+                        poetry lock --no-interaction
                         poetry install --no-root --only main --no-interaction
                     '''
                 }
