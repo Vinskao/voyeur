@@ -9,32 +9,42 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section(header: Text("Configuration")) {
+                Picker("Environment", selection: Binding(
+                    get: { AppConfig.environment },
+                    set: { AppConfig.environment = $0 }
+                )) {
+                    Text("Development (Local)").tag(AppEnvironment.dev)
+                    Text("Production (Remote)").tag(AppEnvironment.prod)
+                }
+                .pickerStyle(.segmented)
+                
                 VStack(alignment: .leading) {
-                    Text("Environment Default:")
+                    Text("API URL (Gateway):")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(AppConfig.defaultBaseURL)
-                        .font(.footnote)
+                    Text(AppConfig.apiBaseURL)
+                        .font(.caption2)
                         .monospaced()
+                        .foregroundStyle(.blue)
+                    
+                    Divider()
+                    
+                    Text("Resource URL (Media):")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(AppConfig.resourceBaseURL)
+                        .font(.caption2)
+                        .monospaced()
+                        .foregroundStyle(.green)
                 }
+                .padding(.vertical, 4)
                 
-                TextField("Override Base URL", text: $baseURL)
+                TextField("Override API URL", text: $baseURL)
                     .autocorrectionDisabled()
 #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
 #endif
-                
-                Button("Test Connection") {
-                    testConnection()
-                }
-                .disabled(baseURL.isEmpty || isTesting)
-                
-                if let result = testResult {
-                    Text(result)
-                        .font(.caption)
-                        .foregroundStyle(result.contains("Success") ? .green : .red)
-                }
             }
             
             Section(header: Text("Cache Management")) {

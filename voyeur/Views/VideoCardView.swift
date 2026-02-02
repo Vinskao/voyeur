@@ -58,16 +58,32 @@ struct VideoCardView: View {
         
         let playerItem = AVPlayerItem(url: finalURL)
         self.player = AVPlayer(playerItem: playerItem)
-        self.player?.actionAtItemEnd = .none
+        self.player?.actionAtItemEnd = .none // Prevent pause on end
         
-        // Loop Logic
+        // Boomerang Logic (Forward <-> Backward)
+        // 1. When video ends (Forward)
+        // Capture 'player' (class type) instead of 'self' (struct type)
         NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: playerItem,
             queue: .main
-        ) { _ in
-            self.player?.seek(to: .zero)
-            self.player?.play()
+        ) { [weak player] _ in
+            guard let player = player else { return }
+            // Seek to barely before the end so reverse works reliably
+            let duration = player.currentItem?.duration ?? .zero
+            player.seek(to: duration, toleranceBefore: .zero, toleranceAfter: .zero)
+            player.rate = -1.0 // Reverse playback
+        }
+        
+        // 2. When video hits start (Backward)
+        let timeZero = CMTime(value: 0, timescale: 1)
+        let timeStart = NSValue(time: timeZero)
+        
+        self.player?.addBoundaryTimeObserver(forTimes: [timeStart], queue: .main) { [weak player] in
+            guard let player = player else { return }
+            if player.rate == -1.0 || player.rate == 0.0 {
+                player.rate = 1.0 // Forward playback
+            }
         }
     }
 }

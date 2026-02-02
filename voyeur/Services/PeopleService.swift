@@ -14,20 +14,21 @@ class PeopleService {
     private init() {}
     
     func fetchPeople() async throws -> [Person] {
-        // Construct URL
-        let baseURLString = AppConfig.baseURL
-        // Ensure no double slashes if baseURL ends with /
-        let endpoint = baseURLString.hasSuffix("/") ? "people/get-all" : "/people/get-all"
+        // Construct URL using Gateway API Base URL
+        // Gateway endpoint: /people/names (Note: apiBaseURL includes /tymg)
+        // Returns: [String] (e.g. ["Wavo", "Chiaki"])
+        let baseURLString = AppConfig.apiBaseURL
+        let endpoint = "/people/names" 
+        
         guard let url = URL(string: baseURLString + endpoint) else {
             throw URLError(.badURL)
         }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "GET"
         request.timeoutInterval = 30
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        print("Fetching people from: \(url.absoluteString)")
+        print("Fetching people names from: \(url.absoluteString)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -36,13 +37,14 @@ class PeopleService {
         }
         
         guard httpResponse.statusCode == 200 else {
-            print("People fetch failed with status: \(httpResponse.statusCode)")
+            print("People names fetch failed with status: \(httpResponse.statusCode)")
             throw URLError(.badServerResponse)
         }
         
         do {
-            let people = try JSONDecoder().decode([Person].self, from: data)
-            return people
+            let names = try JSONDecoder().decode([String].self, from: data)
+            // Map simple strings to Person objects
+            return names.map { Person(name: $0) }
         } catch {
             print("Decoding error: \(error)")
             // Fallback debugging

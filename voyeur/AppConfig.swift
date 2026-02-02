@@ -1,21 +1,49 @@
 
 import Foundation
 
+enum AppEnvironment: String {
+    case dev
+    case prod
+}
+
 enum AppConfig {
-    static let defaultBaseURL = "http://peoplesystem.tatdvsonorth.com"
+    // Current Environment Setting (Persisted)
+    static var environment: AppEnvironment {
+        get {
+            if let stored = UserDefaults.standard.string(forKey: "app_environment"),
+               let env = AppEnvironment(rawValue: stored) {
+                return env
+            }
+            return .dev // Default
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "app_environment")
+        }
+    }
     
-    static var baseURL: String {
-        // Priority 1: UserDefaults override (Settings UI)
-        if let stored = UserDefaults.standard.string(forKey: "dance_video_base_url"), !stored.isEmpty {
+    // API Base URL (Gateway)
+    static var apiBaseURL: String {
+        // Priority 1: UserDefaults override
+        if let stored = UserDefaults.standard.string(forKey: "api_base_url_v2"), !stored.isEmpty {
             return stored
         }
         
-        // Priority 2: Environment Variable (Set in Xcode Scheme -> Arguments -> Environment Variables)
-        if let env = ProcessInfo.processInfo.environment["DANCE_VIDEO_BASE_URL"], !env.isEmpty {
-            return env
+        switch environment {
+        case .dev:
+            return "http://127.0.0.1:8082/tymg"
+        case .prod:
+            return "https://peoplesystem.tatdvsonorth.com/tymg"
+        }
+    }
+    
+    // Resource Base URL (Media/Images)
+    static var resourceBaseURL: String {
+        // Priority 1: UserDefaults override
+        if let stored = UserDefaults.standard.string(forKey: "resource_base_url_v2"), !stored.isEmpty {
+            return stored
         }
         
-        // Priority 3: Hardcoded Default
-        return defaultBaseURL
+        // Both envs use the remote S3/Web server for heavy assets
+        return "https://peoplesystem.tatdvsonorth.com"
     }
 }

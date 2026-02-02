@@ -36,12 +36,12 @@ struct DanceVideoListView: View {
                     Text("No videos found. Configure Base URL in Settings and Scan.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(viewModel.videos, id: \._id) { video in
+                    ForEach(viewModel.videos) { video in
                         HStack {
                             VStack(alignment: .leading) {
-                                Text(video.displayName)
-                                    .font(.headline)
                                 Text(video.filename)
+                                    .font(.headline)
+                                Text(video.personName)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

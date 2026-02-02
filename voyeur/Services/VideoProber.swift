@@ -17,16 +17,13 @@ class VideoProber {
     
     /// Constructs the base URL for video images, appending /images/people if needed
     private func constructBaseVideoURL() -> String {
-        let raw = AppConfig.baseURL
-        // Logic ported from dance.ts
-        if raw.hasSuffix("/images/people") {
-            return raw
-        } else if raw.contains("/images/people") {
-            return raw
-        } else {
-            let clean = raw.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            return clean + "/images/people"
-        }
+        // Use Resource URL (Remote) for heavy assets
+        // Format: <ResourceBase>/images/people/<name>.mp4
+        let baseURL = AppConfig.resourceBaseURL
+        
+        // Ensure cleaner path joining
+        let cleanBase = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
+        return "\(cleanBase)/images/people"
     }
     
     /// Probes for all valid videos for a given person
@@ -67,12 +64,10 @@ class VideoProber {
             }
             
             // Process batch results sequentially to respect consecutive miss logic
-            var batchHasFiles = false
             for i in range {
                 if let res = batchResults[i] {
                     results.append(res)
                     consecutiveMisses = 0
-                    batchHasFiles = true
                 } else {
                     consecutiveMisses += 1
                 }
