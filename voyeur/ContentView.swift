@@ -9,54 +9,55 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @StateObject private var viewModel = DanceViewModel()
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        Group {
+            switch viewModel.appState {
+            case .welcome:
+                WelcomeView(viewModel: viewModel)
+            case .loading(let message):
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(.blue)
+                        Text(message)
+                            .foregroundStyle(.white)
+                            .font(.headline)
+                        
+                        // Show detailed status if available
+                        if !viewModel.statusMessage.isEmpty {
+                            Text(viewModel.statusMessage)
+                                .font(.caption)
+                                .foregroundStyle(.gray)
+                        }
                     }
                 }
-                .onDelete(perform: deleteItems)
+            case .browsing:
+                CardSwipeView(viewModel: viewModel)
+            case .error(let message):
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundStyle(.yellow)
+                    Text("Error Occurred")
+                        .font(.title)
+                    Text(message)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                    
+                    Button("Try Again") {
+                        viewModel.reload()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
+        }
 #if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+        .frame(minWidth: 400, minHeight: 600)
 #endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
     }
 }
 
