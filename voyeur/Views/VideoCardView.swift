@@ -3,21 +3,28 @@ import AVKit
 
 struct VideoCardView: View {
     let video: VideoResult
+    @Binding var isActive: Bool
     @State private var player: AVPlayer?
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             GeometryReader { geometry in
-                if let player = player {
-                    VideoPlayer(player: player)
+                if isActive {
+                    // Active: Show playing video
+                    if let player = player {
+                        VideoPlayerView(player: player)
+                            .edgesIgnoringSafeArea(.all)
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                    } else {
+                        Color.black.edgesIgnoringSafeArea(.all)
+                        ProgressView()
+                            .tint(.white)
+                    }
+                } else {
+                    // Inactive: Show static thumbnail
+                    VideoThumbnailView(video: video)
                         .edgesIgnoringSafeArea(.all)
                         .frame(width: geometry.size.width, height: geometry.size.height)
-                        .onAppear {
-                            player.play()
-                        }
-                } else {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    ProgressView()
                 }
             }
             
@@ -40,6 +47,13 @@ struct VideoCardView: View {
         }
         .onAppear {
             setupPlayer()
+        }
+        .onChange(of: isActive) { oldValue, newValue in
+            if newValue {
+                player?.play()
+            } else {
+                player?.pause()
+            }
         }
         .onDisappear {
             player?.pause()
@@ -84,6 +98,11 @@ struct VideoCardView: View {
             if player.rate == -1.0 || player.rate == 0.0 {
                 player.rate = 1.0 // Forward playback
             }
+        }
+        
+        // Start playing if active
+        if isActive {
+            player?.play()
         }
     }
 }

@@ -12,6 +12,7 @@ enum AppState {
 class DanceViewModel: ObservableObject {
     @Published var appState: AppState = .welcome
     @Published var videos: [VideoResult] = []
+    @Published var currentIndex: Int = 0
     
     private let peopleService = PeopleService.shared
     private let videoProber = VideoProber.shared
@@ -20,6 +21,25 @@ class DanceViewModel: ObservableObject {
     // Status message for legacy compatibility or simple status display
     @Published var statusMessage: String = ""
     @Published var isLoading: Bool = false
+    
+    // Navigation helpers
+    var canNavigateNext: Bool {
+        return currentIndex < videos.count - 1
+    }
+    
+    var canNavigatePrevious: Bool {
+        return currentIndex > 0
+    }
+    
+    func navigateToNext() {
+        guard canNavigateNext else { return }
+        currentIndex += 1
+    }
+    
+    func navigateToPrevious() {
+        guard canNavigatePrevious else { return }
+        currentIndex -= 1
+    }
     
     func scanForVideos() async {
         appState = .loading("Fetching character list...")

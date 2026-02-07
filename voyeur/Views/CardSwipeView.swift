@@ -7,27 +7,99 @@ struct CardSwipeView: View {
         GeometryReader { fullGeometry in
             ZStack(alignment: .bottom) {
                 #if os(iOS)
-                // Standard Horizontal TabView (Swipe Left/Right)
-                TabView {
-                    ForEach(viewModel.videos) { (video: VideoResult) in
-                        VideoCardView(video: video)
-                            .frame(width: fullGeometry.size.width, height: fullGeometry.size.height)
-                            // No rotation needed for standard horizontal swipe
+                // Custom Carousel with TabView (more reliable than ScrollView for paging)
+                TabView(selection: $viewModel.currentIndex) {
+                    ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                        let isActive = index == viewModel.currentIndex
+                        
+                        VideoCardView(
+                            video: video,
+                            isActive: .constant(isActive)
+                        )
+                        .frame(width: fullGeometry.size.width, height: fullGeometry.size.height)
+                        .tag(index)
                     }
                 }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .frame(width: fullGeometry.size.width, height: fullGeometry.size.height)
+                .tabViewStyle(.page(indexDisplayMode: .never))
                 .background(Color.black)
                 .ignoresSafeArea()
+                
+                // Side Preview Overlay (show adjacent videos as previews)
+                HStack(spacing: 0) {
+                    // Left preview
+                    if viewModel.currentIndex > 0 {
+                        VideoThumbnailView(video: viewModel.videos[viewModel.currentIndex - 1])
+                            .frame(width: fullGeometry.size.width * 0.15, height: fullGeometry.size.height * 0.3)
+                            .opacity(0.6)
+                            .scaleEffect(0.85)
+                            .padding(.leading, 10)
+                    }
+                    
+                    Spacer()
+                    
+                    // Right preview
+                    if viewModel.currentIndex < viewModel.videos.count - 1 {
+                        VideoThumbnailView(video: viewModel.videos[viewModel.currentIndex + 1])
+                            .frame(width: fullGeometry.size.width * 0.15, height: fullGeometry.size.height * 0.3)
+                            .opacity(0.6)
+                            .scaleEffect(0.85)
+                            .padding(.trailing, 10)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .allowsHitTesting(false) // Don't intercept touches
+                
+                // Navigation Buttons Overlay
+                HStack {
+                    // Left Arrow Button
+                    if viewModel.canNavigatePrevious {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                viewModel.navigateToPrevious()
+                            }
+                        }) {
+                            Image(systemName: "chevron.left.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundStyle(.white.opacity(0.7))
+                                .shadow(radius: 5)
+                        }
+                        .padding(.leading, 20)
+                    }
+                    
+                    Spacer()
+                    
+                    // Right Arrow Button
+                    if viewModel.canNavigateNext {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                viewModel.navigateToNext()
+                            }
+                        }) {
+                            Image(systemName: "chevron.right.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundStyle(.white.opacity(0.7))
+                                .shadow(radius: 5)
+                        }
+                        .padding(.trailing, 20)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .padding(.bottom, 100) // Position in middle, not at bottom
+                
                 #else
-                // macOS fallback: Horizontal ScrollView? Or stick to vertical?
-                // Let's use Horizontal ScrollView for consistency if requested, but vertical flow is common on desktop.
-                // Keeping vertical for macOS native, unless user insists.
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        ForEach(viewModel.videos) { video in
-                            VideoCardView(video: video)
-                                .frame(width: fullGeometry.size.width, height: fullGeometry.size.height)
+                // macOS fallback: Horizontal ScrollView
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                            let isActive = index == viewModel.currentIndex
+                            
+                            VideoCardView(
+                                video: video,
+                                isActive: .constant(isActive)
+                            )
+                            .frame(width: fullGeometry.size.width, height: fullGeometry.size.height)
                         }
                     }
                 }
@@ -35,7 +107,6 @@ struct CardSwipeView: View {
                 #endif
                 
                 // Reload Button Overlay
-                // Placing it in a separate ZStack layer to ensure it floats above
                 VStack {
                     Spacer()
                     Button(action: {
@@ -46,9 +117,9 @@ struct CardSwipeView: View {
                             .frame(width: 50, height: 50)
                             .foregroundStyle(.white.opacity(0.8))
                             .shadow(radius: 5)
-                            .background(Color.black.opacity(0.3).clipShape(Circle())) // Add backing for visibility
+                            .background(Color.black.opacity(0.3).clipShape(Circle()))
                     }
-                    .padding(.bottom, 60) // Lift up from bottom edge
+                    .padding(.bottom, 60)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }

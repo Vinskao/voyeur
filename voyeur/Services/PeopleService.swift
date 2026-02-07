@@ -11,6 +11,14 @@ struct Person: Codable, Identifiable {
 class PeopleService {
     static let shared = PeopleService()
     
+    // Custom URLSession with extended timeout
+    private lazy var urlSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 60  // 請求超時 60 秒
+        configuration.timeoutIntervalForResource = 120  // 資源超時 120 秒
+        return URLSession(configuration: configuration)
+    }()
+    
     private init() {}
     
     func fetchPeople() async throws -> [Person] {
@@ -26,11 +34,11 @@ class PeopleService {
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.timeoutInterval = 30
+        request.timeoutInterval = 60  // 增加到 60 秒
         
         print("Fetching people names from: \(url.absoluteString)")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await urlSession.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
              throw URLError(.badServerResponse)

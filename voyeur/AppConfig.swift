@@ -28,12 +28,7 @@ enum AppConfig {
             return stored
         }
         
-        switch environment {
-        case .dev:
-            return "http://127.0.0.1:8082/tymg"
-        case .prod:
-            return "https://peoplesystem.tatdvsonorth.com/tymg"
-        }
+        return "https://peoplesystem.tatdvsonorth.com/tymg"
     }
     
     // Resource Base URL (Media/Images)

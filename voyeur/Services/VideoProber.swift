@@ -36,9 +36,9 @@ class VideoProber {
             results.append(mainURL)
         }
         
-        // 2. Check Numbered Videos: {name}{i}.mp4
+        // 2. Check Numbered Videos: {name}2.mp4, {name}3.mp4, etc.
         let batchSize = 5
-        var currentIndex = 1
+        var currentIndex = 2  // Start from 2, not 1
         var consecutiveMisses = 0
         
         while currentIndex <= maxIndex && consecutiveMisses < maxConsecutiveMisses {
