@@ -35,7 +35,7 @@ struct VideoThumbnailView: View {
                 finalURL = video.url
             }
             
-            let asset = AVAsset(url: finalURL)
+            let asset = AVURLAsset(url: finalURL)
             let imageGenerator = AVAssetImageGenerator(asset: asset)
             imageGenerator.appliesPreferredTrackTransform = true
             imageGenerator.requestedTimeToleranceAfter = .zero
@@ -57,7 +57,7 @@ struct VideoThumbnailView: View {
                 
                 // Generate thumbnail at 1 second into the video
                 let time = CMTime(seconds: 1.0, preferredTimescale: 600)
-                let cgImage = try imageGenerator.copyCGImage(at: time, actualTime: nil)
+                let (cgImage, _) = try await imageGenerator.image(at: time)
                 await MainActor.run {
                     self.thumbnailImage = UIImage(cgImage: cgImage)
                     self.isLoading = false

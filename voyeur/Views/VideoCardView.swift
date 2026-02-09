@@ -4,21 +4,44 @@ import AVKit
 struct VideoCardView: View {
     let video: VideoResult
     @Binding var isActive: Bool
-    @State private var player: AVPlayer?
+    @State private var player: AVQueuePlayer?
+    @State private var looper: AVPlayerLooper?
+    @State private var isReadyToPlay = false
+    @State private var loadError = false
+    @State private var observer: Any?
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             GeometryReader { geometry in
                 if isActive {
                     // Active: Show playing video
-                    if let player = player {
-                        VideoPlayerView(player: player)
-                            .edgesIgnoringSafeArea(.all)
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                    } else {
-                        Color.black.edgesIgnoringSafeArea(.all)
-                        ProgressView()
-                            .tint(.white)
+                    ZStack {
+                        if let player = player {
+                            VideoPlayerView(player: player)
+                                .edgesIgnoringSafeArea(.all)
+                                .onAppear { player.play() }
+                                .opacity(isReadyToPlay ? 1 : 0)
+                        }
+                        
+                        if !isReadyToPlay && !loadError {
+                            Color.black.edgesIgnoringSafeArea(.all)
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        
+                        if loadError {
+                            VStack {
+                                Image(systemName: "video.slash")
+                                    .font(.largeTitle)
+                                Text("Failed to load video")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.white)
+                        }
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .onAppear {
+                        if player == nil { setupPlayer() }
                     }
                 } else {
                     // Inactive: Show static thumbnail
@@ -30,38 +53,40 @@ struct VideoCardView: View {
             
             // Name Overlay
             Text(video.personName)
-                .font(.title2)
+                .font(.headline)
                 .bold()
                 .foregroundStyle(.white)
                 .shadow(radius: 2)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [.black.opacity(0.6), .clear],
-                        startPoint: .bottomTrailing,
-                        endPoint: .topLeading
-                    )
-                )
+                .padding(8)
+                .background(.ultraThinMaterial)
                 .cornerRadius(8)
-                .padding(20)
+                .padding(12)
         }
         .onAppear {
-            setupPlayer()
+            if isActive {
+                setupPlayer()
+            }
         }
         .onChange(of: isActive) { oldValue, newValue in
             if newValue {
-                player?.play()
+                setupPlayer()
             } else {
-                player?.pause()
+                cleanupPlayer()
             }
         }
         .onDisappear {
             player?.pause()
+            player = nil 
+            looper = nil
         }
     }
     
     private func setupPlayer() {
-        // Use cached file if available, otherwise remote URL
+        if player != nil {
+            if isActive { player?.play() }
+            return
+        }
+        
         let finalURL: URL
         if let cacheURL = VideoCacheManager.shared.getCachedFileURL(filename: video.filename),
            FileManager.default.fileExists(atPath: cacheURL.path) {
@@ -70,39 +95,44 @@ struct VideoCardView: View {
             finalURL = video.url
         }
         
-        let playerItem = AVPlayerItem(url: finalURL)
-        self.player = AVPlayer(playerItem: playerItem)
-        self.player?.actionAtItemEnd = .none // Prevent pause on end
+        let asset = AVAsset(url: finalURL)
+        let playerItem = AVPlayerItem(asset: asset)
         
-        // Boomerang Logic (Forward <-> Backward)
-        // 1. When video ends (Forward)
-        // Capture 'player' (class type) instead of 'self' (struct type)
-        NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: playerItem,
-            queue: .main
-        ) { [weak player] _ in
-            guard let player = player else { return }
-            // Seek to barely before the end so reverse works reliably
-            let duration = player.currentItem?.duration ?? .zero
-            player.seek(to: duration, toleranceBefore: .zero, toleranceAfter: .zero)
-            player.rate = -1.0 // Reverse playback
-        }
-        
-        // 2. When video hits start (Backward)
-        let timeZero = CMTime(value: 0, timescale: 1)
-        let timeStart = NSValue(time: timeZero)
-        
-        self.player?.addBoundaryTimeObserver(forTimes: [timeStart], queue: .main) { [weak player] in
-            guard let player = player else { return }
-            if player.rate == -1.0 || player.rate == 0.0 {
-                player.rate = 1.0 // Forward playback
+        // Observe status to hide loading spinner
+        self.observer = playerItem.observe(\.status) { item, _ in
+            DispatchQueue.main.async {
+                switch item.status {
+                case .readyToPlay:
+                    self.isReadyToPlay = true
+                    self.loadError = false
+                case .failed:
+                    self.loadError = true
+                    print("Player item failed for \(video.filename): \(String(describing: item.error))")
+                default:
+                    break
+                }
             }
         }
         
-        // Start playing if active
+        let queuePlayer = AVQueuePlayer(playerItem: playerItem)
+        queuePlayer.preventsDisplaySleepDuringVideoPlayback = true
+        
+        self.looper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+        self.player = queuePlayer
+        
         if isActive {
             player?.play()
         }
+    }
+    
+    private func cleanupPlayer() {
+        player?.pause()
+        player = nil
+        looper = nil
+        isReadyToPlay = false
+        loadError = false
+        // The observer should be removed automatically when playerItem is deallocated,
+        // but it's good practice to clear references.
+        observer = nil
     }
 }

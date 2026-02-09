@@ -85,15 +85,34 @@ class DanceViewModel: ObservableObject {
                 statusMessage = "No videos found."
             } else {
                 appState = .browsing
-                statusMessage = "Found \(videos.count) videos."
+                statusMessage = "Found \(videos.count) videos. Caching in background..."
+                // Start background caching
+                Task {
+                    await autoCacheVideos()
+                }
             }
-            
         } catch {
             appState = .error(error.localizedDescription)
             statusMessage = "Error: \(error.localizedDescription)"
         }
         
         isLoading = false
+    }
+    
+    private func autoCacheVideos() async {
+        let toCache = videos
+        for video in toCache {
+            // Check if already cached to avoid redundant work
+            if !cacheManager.isVideoCached(filename: video.filename) {
+                do {
+                    try await cacheManager.cacheVideo(url: video.url, filename: video.filename)
+                    print("Auto-cached: \(video.filename)")
+                } catch {
+                    print("Auto-cache failed for \(video.filename): \(error)")
+                }
+            }
+        }
+        statusMessage = "All videos ready."
     }
     
     func downloadAll() async {
