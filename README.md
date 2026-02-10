@@ -40,26 +40,76 @@ flutter run
 
 ## 📲 部署至實體 iPhone 裝置
 
-由於 iOS 開發環境較特殊，請遵循以下步驟：
+### 方法一：使用 Xcode（推薦，最簡單）
 
-1. **安裝 Xcode**: 請從 App Store 或 Apple 開發者官網重新下載安裝 Xcode。
-2. **安裝實體裝置工具**:
+1. **開啟 Xcode 專案**:
    ```bash
-   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
-   sudo xcodebuild -runFirstLaunch
+   open ios/Runner.xcworkspace
    ```
-3. **設定 iOS 依賴**:
+
+2. **選擇你的 iPhone**:
+   - 在 Xcode 頂部工具列，點擊裝置選擇器
+   - 選擇你已連接的 iPhone（會顯示裝置名稱，例如「Vins 的 iPhone」）
+
+3. **設定簽署**（首次需要）:
+   - 點擊左側專案導航中的 **Runner**
+   - 選擇 **Signing & Capabilities** 標籤
+   - 在 **Team** 下拉選單中登入你的 Apple ID
+
+4. **執行**:
+   - 點擊左上角的 **播放按鈕 ▶️**
+   - Xcode 會自動編譯並安裝到你的 iPhone
+
+5. **信任開發者**（首次需要）:
+   - 在 iPhone 上前往 **設定 → 一般 → VPN 與裝置管理**
+   - 點擊你的 Apple ID，選擇「信任」
+
+---
+
+### 方法二：使用 Flutter CLI
+
+1. **連接 iPhone 並確認裝置**:
+   ```bash
+   flutter devices
+   ```
+   應該會看到類似：
+   ```
+   iPhone 17 Pro Max (mobile) • 00008030-XXXXXXXXXXXX • ios • iOS 17.2
+   ```
+
+2. **直接執行**:
+   ```bash
+   # 自動選擇已連接的 iPhone
+   flutter run
+   
+   # 或指定裝置 ID
+   flutter run -d 00008030-XXXXXXXXXXXX
+   ```
+
+3. **首次部署可能需要**:
    ```bash
    cd ios
    pod install
    cd ..
+   flutter run
    ```
-4. **設定 Signing**:
-   - 開啟專案中的 `ios/Runner.xcworkspace`。
-   - 在 **Runner** -> **Signing & Capabilities** 中登入你的 Apple ID 並選擇 Team。
-5. **執行**:
-   - 連接 iPhone 到 Mac。
-   - 執行 `flutter run` 或直接在 Xcode 中點擊 「▶️ Run」。
+
+---
+
+### 常見問題
+
+**Q: 提示「Developer Mode required」**  
+A: iOS 16+ 需要啟用開發者模式：  
+   設定 → 隱私權與安全性 → 開發者模式 → 開啟
+
+**Q: 提示「Provisioning profile」錯誤**  
+A: 在 Xcode 中重新選擇 Team 並確認簽署設定正確
+
+**Q: Flutter 找不到我的 iPhone**  
+A: 
+   - 確認 iPhone 已解鎖且信任此電腦
+   - 重新插拔 USB 連接線
+   - 執行 `flutter doctor` 檢查環境
 
 ---
 
@@ -67,9 +117,12 @@ flutter run
 
 本專案實作了 **Boomerang (正序+倒序)** 的循環播放效果：
 
-- **運作機制**: 影片下載後在背景使用 FFmpeg 進行運算，合併「正序」與「倒序」片段。
-- **儲存位置**: 處理過的影片會儲存在 App 的 Cache 目錄中，檔名以 `boomerang_` 開頭。
-- **初次載入**: 若影片剛下載完畢，FFmpeg 尚在運算時會先播放原始正序影片，待運算完成後，下次進入該卡片即會自動切換為正反連續播放。
+- **運作機制**: 使用 `video_player` 的播放控制 API，影片播放到結尾後自動倒序播放回起點，形成無縫循環。
+- **優點**: 
+  - ✅ 不需要預先處理影片檔案
+  - ✅ 不依賴 FFmpeg 等外部工具
+  - ✅ 即時生效，無需等待轉檔
+- **實作細節**: 監聽影片播放位置，到達結尾時使用 `seekTo()` 逐幀倒退，模擬倒序播放效果。
 
 ---
 

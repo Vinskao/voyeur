@@ -7,6 +7,22 @@ import '../services/video_cache_manager.dart';
 
 enum AppState { welcome, loading, browsing, error }
 
+enum SortFilter {
+  none,
+  heightAsc,
+  heightDesc,
+  weightAsc,
+  weightDesc,
+  physicPowerAsc,
+  physicPowerDesc,
+  magicPowerAsc,
+  magicPowerDesc,
+  utilityPowerAsc,
+  utilityPowerDesc,
+  totalPowerAsc,
+  totalPowerDesc,
+}
+
 class DanceViewModel extends ChangeNotifier {
   AppState _appState = AppState.welcome;
   List<VideoResult> _videos = [];
@@ -14,6 +30,7 @@ class DanceViewModel extends ChangeNotifier {
   String _errorMessage = "";
   String _statusMessage = "";
   bool _isLoading = false;
+  SortFilter _currentSort = SortFilter.none;
 
   AppState get appState => _appState;
   List<VideoResult> get videos => _videos;
@@ -21,6 +38,7 @@ class DanceViewModel extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get statusMessage => _statusMessage;
   bool get isLoading => _isLoading;
+  SortFilter get currentSort => _currentSort;
 
   final PeopleService _peopleService = PeopleService.shared;
   final VideoProber _videoProber = VideoProber.shared;
@@ -29,42 +47,59 @@ class DanceViewModel extends ChangeNotifier {
   void reload() {
     _videos = [];
     _currentIndex = 0;
+    _currentSort = SortFilter.none;
     _cacheManager.clearAllCache();
     scanForVideos();
   }
 
   Future<void> scanForVideos() async {
     _appState = AppState.loading;
-    _statusMessage = "Fetching character list...";
+    _statusMessage = "Fetching character details...";
     _isLoading = true;
     notifyListeners();
 
     try {
+      // 1. Fetch detailed people data
       final people = await _peopleService.fetchPeople();
-      _statusMessage = "Found ${people.count} characters. Probing videos...";
+
+      // 2. Fetch batch damage (totalPower)
+      _statusMessage = "Calculating total power...";
+      notifyListeners();
+      final damageResults = await _peopleService.fetchBatchDamage(
+        people.map((p) => p.name).toList(),
+      );
+
+      // Map damage results back to people
+      final enrichedPeople = people.map((p) {
+        return p.copyWith(totalPower: damageResults[p.name]);
+      }).toList();
+
+      _statusMessage =
+          "Found ${enrichedPeople.length} characters. Probing videos...";
       notifyListeners();
 
       List<VideoResult> foundVideos = [];
 
-      // Probing in chunks to match Swift logic if needed,
-      // but Dart's Future.wait with limited concurrency is also fine.
-      // For simplicity, we'll do them in batches.
       const int chunkSize = 5;
-      for (int i = 0; i < people.length; i += chunkSize) {
-        int end = (i + chunkSize < people.length)
+      for (int i = 0; i < enrichedPeople.length; i += chunkSize) {
+        int end = (i + chunkSize < enrichedPeople.length)
             ? i + chunkSize
-            : people.length;
-        final chunk = people.sublist(i, end);
+            : enrichedPeople.length;
+        final chunk = enrichedPeople.sublist(i, end);
 
         final chunkResults = await Future.wait(
-          chunk.map((person) => _videoProber.probeCharacter(person)),
+          chunk.map((person) async {
+            final results = await _videoProber.probeCharacter(person);
+            // Attach person data to results for sorting later
+            return results.map((res) => res.copyWith(person: person)).toList();
+          }),
         );
 
         for (var res in chunkResults) {
           foundVideos.addAll(res);
         }
 
-        _statusMessage = "Scanned $end/${people.length} characters...";
+        _statusMessage = "Scanned $end/${enrichedPeople.length} characters...";
         notifyListeners();
       }
 
@@ -87,6 +122,99 @@ class DanceViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void sortVideos(SortFilter filter) {
+    if (_videos.isEmpty) return;
+
+    _currentSort = filter;
+
+    switch (filter) {
+      case SortFilter.heightAsc:
+        _videos.sort(
+          (a, b) =>
+              (a.person?.heightCm ?? 0).compareTo(b.person?.heightCm ?? 0),
+        );
+        break;
+      case SortFilter.heightDesc:
+        _videos.sort(
+          (a, b) =>
+              (b.person?.heightCm ?? 0).compareTo(a.person?.heightCm ?? 0),
+        );
+        break;
+      case SortFilter.weightAsc:
+        _videos.sort(
+          (a, b) =>
+              (a.person?.weightKg ?? 0).compareTo(b.person?.weightKg ?? 0),
+        );
+        break;
+      case SortFilter.weightDesc:
+        _videos.sort(
+          (a, b) =>
+              (b.person?.weightKg ?? 0).compareTo(a.person?.weightKg ?? 0),
+        );
+        break;
+      case SortFilter.physicPowerAsc:
+        _videos.sort(
+          (a, b) => (a.person?.physicPower ?? 0).compareTo(
+            b.person?.physicPower ?? 0,
+          ),
+        );
+        break;
+      case SortFilter.physicPowerDesc:
+        _videos.sort(
+          (a, b) => (b.person?.physicPower ?? 0).compareTo(
+            a.person?.physicPower ?? 0,
+          ),
+        );
+        break;
+      case SortFilter.magicPowerAsc:
+        _videos.sort(
+          (a, b) =>
+              (a.person?.magicPower ?? 0).compareTo(b.person?.magicPower ?? 0),
+        );
+        break;
+      case SortFilter.magicPowerDesc:
+        _videos.sort(
+          (a, b) =>
+              (b.person?.magicPower ?? 0).compareTo(a.person?.magicPower ?? 0),
+        );
+        break;
+      case SortFilter.utilityPowerAsc:
+        _videos.sort(
+          (a, b) => (a.person?.utilityPower ?? 0).compareTo(
+            b.person?.utilityPower ?? 0,
+          ),
+        );
+        break;
+      case SortFilter.utilityPowerDesc:
+        _videos.sort(
+          (a, b) => (b.person?.utilityPower ?? 0).compareTo(
+            a.person?.utilityPower ?? 0,
+          ),
+        );
+        break;
+      case SortFilter.totalPowerAsc:
+        _videos.sort(
+          (a, b) =>
+              (a.person?.totalPower ?? 0).compareTo(b.person?.totalPower ?? 0),
+        );
+        break;
+      case SortFilter.totalPowerDesc:
+        _videos.sort(
+          (a, b) =>
+              (b.person?.totalPower ?? 0).compareTo(a.person?.totalPower ?? 0),
+        );
+        break;
+      case SortFilter.none:
+        // Original order is not preserved unless we stored it, but usually "none" is the initial probed order.
+        break;
+    }
+
+    // Reset to the first card to show the new sort order clearly
+    _currentIndex = 0;
+
+    notifyListeners();
   }
 
   Future<void> _autoCacheVideos() async {
@@ -126,8 +254,4 @@ class DanceViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-}
-
-extension on List {
-  int get count => length;
 }

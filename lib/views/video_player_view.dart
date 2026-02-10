@@ -17,6 +17,8 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   String? _error;
+  bool _isPlayingForward = true;
+  bool _isBoomerangEnabled = true;
 
   @override
   void initState() {
@@ -39,7 +41,14 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       }
 
       await _controller!.initialize();
-      await _controller!.setLooping(true);
+
+      // Setup boomerang effect listener
+      if (_isBoomerangEnabled) {
+        _controller!.addListener(_boomerangListener);
+      } else {
+        await _controller!.setLooping(true);
+      }
+
       await _controller!.play();
 
       if (mounted) {
@@ -56,8 +65,64 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
   }
 
+  void _boomerangListener() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    final position = _controller!.value.position;
+    final duration = _controller!.value.duration;
+
+    if (_isPlayingForward) {
+      // Check if reached the end
+      if (position >= duration - const Duration(milliseconds: 100)) {
+        _isPlayingForward = false;
+        _playBackward();
+      }
+    } else {
+      // Check if reached the beginning
+      if (position <= const Duration(milliseconds: 100)) {
+        _isPlayingForward = true;
+        _controller!.play();
+      }
+    }
+  }
+
+  void _playBackward() async {
+    if (_controller == null) return;
+
+    await _controller!.pause();
+    final duration = _controller!.value.duration;
+
+    // Manually step backward frame by frame
+    _reversePlayback(duration);
+  }
+
+  void _reversePlayback(Duration duration) async {
+    if (_controller == null || !mounted) return;
+
+    const frameInterval = Duration(milliseconds: 33); // ~30fps
+    Duration currentPosition = duration;
+
+    while (currentPosition > Duration.zero && !_isPlayingForward && mounted) {
+      currentPosition -= frameInterval;
+      if (currentPosition < Duration.zero) {
+        currentPosition = Duration.zero;
+      }
+
+      await _controller!.seekTo(currentPosition);
+      await Future.delayed(frameInterval);
+    }
+
+    if (!_isPlayingForward && mounted && _controller != null) {
+      _isPlayingForward = true;
+      if (_controller!.value.isInitialized) {
+        _controller!.play();
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _controller?.removeListener(_boomerangListener);
     _controller?.dispose();
     super.dispose();
   }
@@ -78,9 +143,15 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
 
     return Center(
-      child: AspectRatio(
-        aspectRatio: _controller!.value.aspectRatio,
-        child: VideoPlayer(_controller!),
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
       ),
     );
   }

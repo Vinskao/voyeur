@@ -1,4 +1,4 @@
-package com.example.voyeur
+package com.rapeum.voyeur
 
 import io.flutter.embedding.android.FlutterActivity
 
