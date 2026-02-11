@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/video_result.dart';
+import '../models/character_videos.dart';
 import '../viewmodels/dance_viewmodel.dart';
 import 'video_player_view.dart';
 
 class VideoCardView extends StatelessWidget {
-  final VideoResult video;
+  final CharacterVideos character;
   final bool isActive;
 
-  const VideoCardView({super.key, required this.video, required this.isActive});
+  const VideoCardView({
+    super.key,
+    required this.character,
+    required this.isActive,
+  });
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<DanceViewModel>(context, listen: false);
-    final person = video.person;
+    final person = character.person;
 
     return Container(
       decoration: BoxDecoration(
@@ -33,7 +37,7 @@ class VideoCardView extends StatelessWidget {
         children: [
           // Video Player or Thumbnail
           if (isActive)
-            VideoPlayerView(video: video)
+            VideoPlayerView(videos: character.videos)
           else
             Container(
               color: Colors.grey[900],
@@ -47,61 +51,59 @@ class VideoCardView extends StatelessWidget {
             ),
 
           // Character Stats Overlay
-          if (person != null)
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (person.heightCm != null)
-                      _buildStatText(
-                        "H: ${person.heightCm}cm",
-                        isHighlighted:
-                            viewModel.currentSort == SortFilter.heightAsc ||
-                            viewModel.currentSort == SortFilter.heightDesc,
-                      ),
-                    if (person.weightKg != null)
-                      _buildStatText(
-                        "W: ${person.weightKg}kg",
-                        isHighlighted:
-                            viewModel.currentSort == SortFilter.weightAsc ||
-                            viewModel.currentSort == SortFilter.weightDesc,
-                      ),
-                    if (person.physicPower != null)
-                      _buildStatText(
-                        "PHY: ${person.physicPower}",
-                        isHighlighted:
-                            viewModel.currentSort ==
-                                SortFilter.physicPowerAsc ||
-                            viewModel.currentSort == SortFilter.physicPowerDesc,
-                      ),
-                    if (person.magicPower != null)
-                      _buildStatText(
-                        "MAG: ${person.magicPower}",
-                        isHighlighted:
-                            viewModel.currentSort == SortFilter.magicPowerAsc ||
-                            viewModel.currentSort == SortFilter.magicPowerDesc,
-                      ),
-                    if (person.totalPower != null)
-                      _buildStatText(
-                        "POW: ${person.totalPower}",
-                        isHighlighted:
-                            viewModel.currentSort == SortFilter.totalPowerAsc ||
-                            viewModel.currentSort == SortFilter.totalPowerDesc,
-                        color: Colors.orangeAccent,
-                      ),
-                  ],
-                ),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (person.heightCm != null)
+                    _buildStatText(
+                      "H: ${person.heightCm}cm",
+                      isHighlighted:
+                          viewModel.currentSort == SortFilter.heightAsc ||
+                          viewModel.currentSort == SortFilter.heightDesc,
+                    ),
+                  if (person.weightKg != null)
+                    _buildStatText(
+                      "W: ${person.weightKg}kg",
+                      isHighlighted:
+                          viewModel.currentSort == SortFilter.weightAsc ||
+                          viewModel.currentSort == SortFilter.weightDesc,
+                    ),
+                  if (person.physicPower != null)
+                    _buildStatText(
+                      "PHY: ${person.physicPower}",
+                      isHighlighted:
+                          viewModel.currentSort == SortFilter.physicPowerAsc ||
+                          viewModel.currentSort == SortFilter.physicPowerDesc,
+                    ),
+                  if (person.magicPower != null)
+                    _buildStatText(
+                      "MAG: ${person.magicPower}",
+                      isHighlighted:
+                          viewModel.currentSort == SortFilter.magicPowerAsc ||
+                          viewModel.currentSort == SortFilter.magicPowerDesc,
+                    ),
+                  if (person.totalPower != null)
+                    _buildStatText(
+                      "POW: ${person.totalPower}",
+                      isHighlighted:
+                          viewModel.currentSort == SortFilter.totalPowerAsc ||
+                          viewModel.currentSort == SortFilter.totalPowerDesc,
+                      color: Colors.orangeAccent,
+                    ),
+                ],
               ),
             ),
+          ),
 
           // Name Overlay
           Positioned(
@@ -114,7 +116,7 @@ class VideoCardView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                video.personName,
+                character.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

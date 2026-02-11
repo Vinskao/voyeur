@@ -5,9 +5,9 @@ import '../models/video_result.dart';
 import '../services/video_cache_manager.dart';
 
 class VideoPlayerView extends StatefulWidget {
-  final VideoResult video;
+  final List<VideoResult> videos;
 
-  const VideoPlayerView({super.key, required this.video});
+  const VideoPlayerView({super.key, required this.videos});
 
   @override
   State<VideoPlayerView> createState() => _VideoPlayerViewState();
@@ -15,10 +15,13 @@ class VideoPlayerView extends StatefulWidget {
 
 class _VideoPlayerViewState extends State<VideoPlayerView> {
   VideoPlayerController? _controller;
+  int _currentVideoIndex = 0;
   bool _isInitialized = false;
   String? _error;
   bool _isPlayingForward = true;
-  bool _isBoomerangEnabled = true;
+
+  // Track if we are currently switching videos to prevent race conditions
+  bool _isSwitching = false;
 
   @override
   void initState() {
@@ -26,47 +29,79 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     _initializePlayer();
   }
 
+  @override
+  void didUpdateWidget(VideoPlayerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the playlist changes significantly (e.g. different person), reset.
+    // Simple check: if the first video is different.
+    if (widget.videos.isNotEmpty &&
+        oldWidget.videos.isNotEmpty &&
+        widget.videos.first.url != oldWidget.videos.first.url) {
+      _currentVideoIndex = 0;
+      _initializePlayer();
+    }
+  }
+
   Future<void> _initializePlayer() async {
+    if (widget.videos.isEmpty) return;
+
+    _isSwitching = true;
+    setState(() {
+      _isInitialized = false;
+      _error = null;
+    });
+
+    // Dispose previous controller safely
+    final oldController = _controller;
+    if (oldController != null) {
+      _controller = null; // Detach immediately
+      oldController.removeListener(_boomerangListener);
+      await oldController.dispose();
+    }
+
     try {
+      final currentVideo = widget.videos[_currentVideoIndex];
       final cachedPath = await VideoCacheManager.shared.getCachedFilePath(
-        widget.video.filename,
+        currentVideo.filename,
       );
 
+      VideoPlayerController newController;
       if (cachedPath != null) {
-        _controller = VideoPlayerController.file(File(cachedPath));
+        newController = VideoPlayerController.file(File(cachedPath));
       } else {
-        _controller = VideoPlayerController.networkUrl(
-          Uri.parse(widget.video.url),
+        newController = VideoPlayerController.networkUrl(
+          Uri.parse(currentVideo.url),
         );
       }
 
-      await _controller!.initialize();
-
-      // Setup boomerang effect listener
-      if (_isBoomerangEnabled) {
-        _controller!.addListener(_boomerangListener);
-      } else {
-        await _controller!.setLooping(true);
-      }
-
-      await _controller!.play();
+      await newController.initialize();
+      newController.addListener(_boomerangListener);
+      await newController.play();
 
       if (mounted) {
         setState(() {
+          _controller = newController;
           _isInitialized = true;
+          _isPlayingForward = true;
+          _isSwitching = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _isSwitching = false;
         });
       }
     }
   }
 
   void _boomerangListener() {
-    if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_isSwitching ||
+        _controller == null ||
+        !_controller!.value.isInitialized) {
+      return;
+    }
 
     final position = _controller!.value.position;
     final duration = _controller!.value.duration;
@@ -77,13 +112,8 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
         _isPlayingForward = false;
         _playBackward();
       }
-    } else {
-      // Check if reached the beginning
-      if (position <= const Duration(milliseconds: 100)) {
-        _isPlayingForward = true;
-        _controller!.play();
-      }
     }
+    // Backward direction is handled by _reversePlayback loop, not this listener
   }
 
   void _playBackward() async {
@@ -103,6 +133,9 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     Duration currentPosition = duration;
 
     while (currentPosition > Duration.zero && !_isPlayingForward && mounted) {
+      // Double check controller availability
+      if (_controller == null) return;
+
       currentPosition -= frameInterval;
       if (currentPosition < Duration.zero) {
         currentPosition = Duration.zero;
@@ -112,12 +145,17 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       await Future.delayed(frameInterval);
     }
 
-    if (!_isPlayingForward && mounted && _controller != null) {
-      _isPlayingForward = true;
-      if (_controller!.value.isInitialized) {
-        _controller!.play();
-      }
+    // Finished reversing
+    if (!_isPlayingForward && mounted) {
+      _playNextVideo();
     }
+  }
+
+  void _playNextVideo() {
+    setState(() {
+      _currentVideoIndex = (_currentVideoIndex + 1) % widget.videos.length;
+    });
+    _initializePlayer();
   }
 
   @override
@@ -134,23 +172,22 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
         child: Text(
           "Error: $_error",
           style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center,
         ),
       );
     }
 
-    if (!_isInitialized) {
+    if (!_isInitialized || _controller == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Center(
-      child: SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: _controller!.value.size.width,
-            height: _controller!.value.size.height,
-            child: VideoPlayer(_controller!),
-          ),
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: _controller!.value.size.width,
+          height: _controller!.value.size.height,
+          child: VideoPlayer(_controller!),
         ),
       ),
     );

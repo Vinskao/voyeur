@@ -200,7 +200,7 @@ class _CardSwipeViewState extends State<CardSwipeView> {
           // Video Cards PageView
           PageView.builder(
             controller: _pageController,
-            itemCount: viewModel.videos.length,
+            itemCount: viewModel.characters.length,
             onPageChanged: (index) {
               viewModel.setCurrentIndex(index);
             },
@@ -230,7 +230,7 @@ class _CardSwipeViewState extends State<CardSwipeView> {
                   );
                 },
                 child: VideoCardView(
-                  video: viewModel.videos[index],
+                  character: viewModel.characters[index],
                   isActive: index == viewModel.currentIndex,
                 ),
               );
@@ -270,7 +270,7 @@ class _CardSwipeViewState extends State<CardSwipeView> {
               ),
             ),
 
-          if (viewModel.currentIndex < viewModel.videos.length - 1)
+          if (viewModel.currentIndex < viewModel.characters.length - 1)
             Positioned(
               right: 20,
               top: 0,

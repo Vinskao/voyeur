@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/person.dart';
 import '../models/video_result.dart';
+import '../models/character_videos.dart';
 import '../services/people_service.dart';
 import '../services/video_prober.dart';
 import '../services/video_cache_manager.dart';
@@ -25,7 +26,7 @@ enum SortFilter {
 
 class DanceViewModel extends ChangeNotifier {
   AppState _appState = AppState.welcome;
-  List<VideoResult> _videos = [];
+  List<CharacterVideos> _characters = [];
   int _currentIndex = 0;
   String _errorMessage = "";
   String _statusMessage = "";
@@ -33,7 +34,7 @@ class DanceViewModel extends ChangeNotifier {
   SortFilter _currentSort = SortFilter.none;
 
   AppState get appState => _appState;
-  List<VideoResult> get videos => _videos;
+  List<CharacterVideos> get characters => _characters;
   int get currentIndex => _currentIndex;
   String get errorMessage => _errorMessage;
   String get statusMessage => _statusMessage;
@@ -45,7 +46,7 @@ class DanceViewModel extends ChangeNotifier {
   final VideoCacheManager _cacheManager = VideoCacheManager.shared;
 
   void reload() {
-    _videos = [];
+    _characters = [];
     _currentIndex = 0;
     _currentSort = SortFilter.none;
     _cacheManager.clearAllCache();
@@ -78,7 +79,7 @@ class DanceViewModel extends ChangeNotifier {
           "Found ${enrichedPeople.length} characters. Probing videos...";
       notifyListeners();
 
-      List<VideoResult> foundVideos = [];
+      List<VideoResult> allFoundVideos = [];
 
       const int chunkSize = 5;
       for (int i = 0; i < enrichedPeople.length; i += chunkSize) {
@@ -96,21 +97,41 @@ class DanceViewModel extends ChangeNotifier {
         );
 
         for (var res in chunkResults) {
-          foundVideos.addAll(res);
+          allFoundVideos.addAll(res);
         }
 
         _statusMessage = "Scanned $end/${enrichedPeople.length} characters...";
         notifyListeners();
       }
 
-      _videos = foundVideos;
+      // Group videos by person
+      final Map<String, List<VideoResult>> grouped = {};
+      // Also keep track of the person object for each name
+      final Map<String, Person> personMap = {};
 
-      if (_videos.isEmpty) {
+      for (var video in allFoundVideos) {
+        if (!grouped.containsKey(video.personName)) {
+          grouped[video.personName] = [];
+          if (video.person != null) {
+            personMap[video.personName] = video.person!;
+          }
+        }
+        grouped[video.personName]!.add(video);
+      }
+
+      // Convert to CharacterVideos list
+      _characters = grouped.entries.map((entry) {
+        // Fallback to a basic Person if not found (shouldn't happen with correct logic)
+        final person = personMap[entry.key] ?? Person(name: entry.key);
+        return CharacterVideos(person: person, videos: entry.value);
+      }).toList();
+
+      if (_characters.isEmpty) {
         _appState = AppState.error;
         _errorMessage = "No videos found.";
       } else {
         _appState = AppState.browsing;
-        _statusMessage = "Found ${_videos.length} videos.";
+        _statusMessage = "Found ${_characters.length} characters.";
 
         // Background caching
         _autoCacheVideos();
@@ -125,89 +146,82 @@ class DanceViewModel extends ChangeNotifier {
   }
 
   void sortVideos(SortFilter filter) {
-    if (_videos.isEmpty) return;
+    if (_characters.isEmpty) return;
 
     _currentSort = filter;
 
     switch (filter) {
       case SortFilter.heightAsc:
-        _videos.sort(
-          (a, b) =>
-              (a.person?.heightCm ?? 0).compareTo(b.person?.heightCm ?? 0),
+        _characters.sort(
+          (a, b) => (a.person.heightCm ?? 0).compareTo(b.person.heightCm ?? 0),
         );
         break;
       case SortFilter.heightDesc:
-        _videos.sort(
-          (a, b) =>
-              (b.person?.heightCm ?? 0).compareTo(a.person?.heightCm ?? 0),
+        _characters.sort(
+          (a, b) => (b.person.heightCm ?? 0).compareTo(a.person.heightCm ?? 0),
         );
         break;
       case SortFilter.weightAsc:
-        _videos.sort(
-          (a, b) =>
-              (a.person?.weightKg ?? 0).compareTo(b.person?.weightKg ?? 0),
+        _characters.sort(
+          (a, b) => (a.person.weightKg ?? 0).compareTo(b.person.weightKg ?? 0),
         );
         break;
       case SortFilter.weightDesc:
-        _videos.sort(
-          (a, b) =>
-              (b.person?.weightKg ?? 0).compareTo(a.person?.weightKg ?? 0),
+        _characters.sort(
+          (a, b) => (b.person.weightKg ?? 0).compareTo(a.person.weightKg ?? 0),
         );
         break;
       case SortFilter.physicPowerAsc:
-        _videos.sort(
-          (a, b) => (a.person?.physicPower ?? 0).compareTo(
-            b.person?.physicPower ?? 0,
-          ),
+        _characters.sort(
+          (a, b) =>
+              (a.person.physicPower ?? 0).compareTo(b.person.physicPower ?? 0),
         );
         break;
       case SortFilter.physicPowerDesc:
-        _videos.sort(
-          (a, b) => (b.person?.physicPower ?? 0).compareTo(
-            a.person?.physicPower ?? 0,
-          ),
+        _characters.sort(
+          (a, b) =>
+              (b.person.physicPower ?? 0).compareTo(a.person.physicPower ?? 0),
         );
         break;
       case SortFilter.magicPowerAsc:
-        _videos.sort(
+        _characters.sort(
           (a, b) =>
-              (a.person?.magicPower ?? 0).compareTo(b.person?.magicPower ?? 0),
+              (a.person.magicPower ?? 0).compareTo(b.person.magicPower ?? 0),
         );
         break;
       case SortFilter.magicPowerDesc:
-        _videos.sort(
+        _characters.sort(
           (a, b) =>
-              (b.person?.magicPower ?? 0).compareTo(a.person?.magicPower ?? 0),
+              (b.person.magicPower ?? 0).compareTo(a.person.magicPower ?? 0),
         );
         break;
       case SortFilter.utilityPowerAsc:
-        _videos.sort(
-          (a, b) => (a.person?.utilityPower ?? 0).compareTo(
-            b.person?.utilityPower ?? 0,
+        _characters.sort(
+          (a, b) => (a.person.utilityPower ?? 0).compareTo(
+            b.person.utilityPower ?? 0,
           ),
         );
         break;
       case SortFilter.utilityPowerDesc:
-        _videos.sort(
-          (a, b) => (b.person?.utilityPower ?? 0).compareTo(
-            a.person?.utilityPower ?? 0,
+        _characters.sort(
+          (a, b) => (b.person.utilityPower ?? 0).compareTo(
+            a.person.utilityPower ?? 0,
           ),
         );
         break;
       case SortFilter.totalPowerAsc:
-        _videos.sort(
+        _characters.sort(
           (a, b) =>
-              (a.person?.totalPower ?? 0).compareTo(b.person?.totalPower ?? 0),
+              (a.person.totalPower ?? 0).compareTo(b.person.totalPower ?? 0),
         );
         break;
       case SortFilter.totalPowerDesc:
-        _videos.sort(
+        _characters.sort(
           (a, b) =>
-              (b.person?.totalPower ?? 0).compareTo(a.person?.totalPower ?? 0),
+              (b.person.totalPower ?? 0).compareTo(a.person.totalPower ?? 0),
         );
         break;
       case SortFilter.none:
-        // Original order is not preserved unless we stored it, but usually "none" is the initial probed order.
         break;
     }
 
@@ -218,12 +232,14 @@ class DanceViewModel extends ChangeNotifier {
   }
 
   Future<void> _autoCacheVideos() async {
-    for (var video in _videos) {
-      if (!await _cacheManager.isVideoCached(video.filename)) {
-        try {
-          await _cacheManager.cacheVideo(video.url, video.filename);
-        } catch (e) {
-          print("Auto-cache failed for ${video.filename}: $e");
+    for (var char in _characters) {
+      for (var video in char.videos) {
+        if (!await _cacheManager.isVideoCached(video.filename)) {
+          try {
+            await _cacheManager.cacheVideo(video.url, video.filename);
+          } catch (e) {
+            print("Auto-cache failed for ${video.filename}: $e");
+          }
         }
       }
     }
@@ -232,13 +248,13 @@ class DanceViewModel extends ChangeNotifier {
   }
 
   void setCurrentIndex(int index) {
-    if (index >= 0 && index < _videos.length) {
+    if (index >= 0 && index < _characters.length) {
       _currentIndex = index;
       notifyListeners();
     }
   }
 
-  bool get canNavigateNext => _currentIndex < _videos.length - 1;
+  bool get canNavigateNext => _currentIndex < _characters.length - 1;
   bool get canNavigatePrevious => _currentIndex > 0;
 
   void navigateToNext() {
