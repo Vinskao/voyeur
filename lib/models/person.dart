@@ -32,6 +32,7 @@ class Person {
   final String? deptName;
   final int? age;
   final String? proxy;
+  final String? originArmyName;
 
   Person({
     required this.name,
@@ -67,6 +68,7 @@ class Person {
     this.deptName,
     this.age,
     this.proxy,
+    this.originArmyName,
   });
 
   String get id => name;
@@ -106,6 +108,7 @@ class Person {
       deptName: json['deptName'] as String?,
       age: json['age'] as int?,
       proxy: json['proxy'] as String?,
+      originArmyName: json['originArmyName'] as String?,
     );
   }
 
@@ -144,6 +147,7 @@ class Person {
       deptName: deptName,
       age: age,
       proxy: proxy,
+      originArmyName: originArmyName,
     );
   }
 
@@ -181,5 +185,6 @@ class Person {
     'deptName': deptName,
     'age': age,
     'proxy': proxy,
+    'originArmyName': originArmyName,
   };
 }

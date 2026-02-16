@@ -5,6 +5,7 @@ enum AppState {
     case welcome
     case loading(String)
     case browsing
+    case gallery
     case error(String)
 }
 
@@ -39,6 +40,10 @@ class DanceViewModel: ObservableObject {
     func navigateToPrevious() {
         guard canNavigatePrevious else { return }
         currentIndex -= 1
+    }
+    
+    func enterGallery() {
+        appState = .gallery
     }
     
     func scanForVideos() async {

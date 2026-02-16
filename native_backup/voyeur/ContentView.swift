@@ -37,6 +37,8 @@ struct ContentView: View {
                 }
             case .browsing:
                 CardSwipeView(viewModel: viewModel)
+            case .gallery:
+                PeopleGalleryView(viewModel: viewModel)
             case .error(let message):
                 VStack(spacing: 20) {
                     Image(systemName: "exclamationmark.triangle")

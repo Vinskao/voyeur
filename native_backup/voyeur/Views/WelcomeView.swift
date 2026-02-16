@@ -52,6 +52,24 @@ struct WelcomeView: View {
                     .font(.caption)
                     .foregroundStyle(.gray)
                     .opacity(0.8)
+                
+                // Fire Button for Gallery
+                Button(action: {
+                    viewModel.enterGallery()
+                }) {
+                    Image(systemName: "flame.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .foregroundStyle(.orange)
+                        .padding()
+                        .background(
+                            Circle()
+                                .fill(Color.black)
+                                .shadow(color: .orange.opacity(0.6), radius: 8, x: 0, y: 0)
+                        )
+                }
+                .padding(.top, 20)
             }
         }
         .onAppear {

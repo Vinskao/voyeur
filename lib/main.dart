@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'viewmodels/dance_viewmodel.dart';
 import 'views/welcome_view.dart';
 import 'views/card_swipe_view.dart';
+import 'views/people_gallery_view.dart';
 
 void main() {
   runApp(
@@ -49,6 +50,8 @@ class MainContainer extends StatelessWidget {
         return _buildLoading(viewModel.statusMessage);
       case AppState.browsing:
         return const CardSwipeView();
+      case AppState.gallery:
+        return const PeopleGalleryView();
       case AppState.error:
         return _buildError(viewModel);
     }

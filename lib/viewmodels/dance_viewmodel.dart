@@ -6,7 +6,7 @@ import '../services/people_service.dart';
 import '../services/video_prober.dart';
 import '../services/video_cache_manager.dart';
 
-enum AppState { welcome, loading, browsing, error }
+enum AppState { welcome, loading, browsing, gallery, error }
 
 enum SortFilter {
   none,
@@ -44,6 +44,16 @@ class DanceViewModel extends ChangeNotifier {
   final PeopleService _peopleService = PeopleService.shared;
   final VideoProber _videoProber = VideoProber.shared;
   final VideoCacheManager _cacheManager = VideoCacheManager.shared;
+
+  void enterGallery() {
+    _appState = AppState.gallery;
+    notifyListeners();
+  }
+
+  void exitGallery() {
+    _appState = AppState.welcome;
+    notifyListeners();
+  }
 
   void reload() {
     _characters = [];

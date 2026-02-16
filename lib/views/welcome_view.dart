@@ -158,6 +158,17 @@ class _WelcomeViewState extends State<WelcomeView>
               'Tap to Enter',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
+            const SizedBox(height: 30),
+            IconButton(
+              icon: const Icon(
+                Icons.local_fire_department,
+                size: 40,
+                color: Colors.orange,
+              ),
+              onPressed: () {
+                viewModel.enterGallery();
+              },
+            ),
           ],
         ),
       ),

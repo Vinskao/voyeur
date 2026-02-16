@@ -19,19 +19,22 @@ class PeopleService {
 
     try {
       // Use POST as requested for /get-all
-      final response = await _dio.post(url);
+      // Send empty JSON to ensure Content-Type is application/json and body is valid JSON
+      final response = await _dio.post(
+        url,
+        data: {},
+        options: Options(contentType: Headers.jsonContentType),
+      );
+
       if (response.statusCode == 200) {
         dynamic data = response.data;
-        // Handle case where Dio returns String instead of List (e.g. content-type issues)
+
+        // Handle case where response is a String (e.g. valid JSON string but Dio didn't parse it)
         if (data is String) {
-          // If response is raw string, try to parse it manually, though Dio usually handles this.
-          // However, based on the error "Unexpected character", it might be an issue with
-          // invisible characters or BOM if it's being treated as JSON when it's not clean.
-          // But standard Dio flow with application/json should return List<dynamic>.
-          // For now, let's assume if it is a String, we might need to decode it or it is an error.
-          // But given the curl output was clean JSON, let's trust Dio's auto-parsing
-          // for List<dynamic>. The "Unexpected character" usually comes from `jsonDecode`
-          // running on something that isn't a valid JSON string (maybe empty or HTML error).
+          print(
+            "Warning: Response data is String. Attempting to decode if needed.",
+          );
+          // Usually Dio handles this if responseType is json.
         }
 
         if (data is List) {
@@ -41,11 +44,20 @@ class PeopleService {
           throw Exception("Unexpected response format: ${data.runtimeType}");
         }
       } else {
+        print("Server Error: ${response.statusCode} ${response.statusMessage}");
+        print("Response Body: ${response.data}");
         throw Exception(
           "Failed to fetch people details: ${response.statusCode}",
         );
       }
     } catch (e) {
+      if (e is DioException) {
+        print("DioError fetching people: ${e.message}");
+        if (e.response != null) {
+          print("Response Status: ${e.response?.statusCode}");
+          print("Response Data: ${e.response?.data}");
+        }
+      }
       print("Error fetching people details: $e");
       rethrow;
     }
@@ -65,6 +77,13 @@ class PeopleService {
         return {};
       }
     } catch (e) {
+      if (e is DioException) {
+        print("DioError fetching batch damage: ${e.message}");
+        if (e.response != null) {
+          print("Response data: ${e.response?.data}");
+          print("Response headers: ${e.response?.headers}");
+        }
+      }
       print("Error fetching batch damage: $e");
       return {};
     }
