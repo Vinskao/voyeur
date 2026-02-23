@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import '../viewmodels/dance_viewmodel.dart';
 
 class WelcomeView extends StatefulWidget {
@@ -16,6 +17,18 @@ class _WelcomeViewState extends State<WelcomeView>
   late AnimationController _rippleController;
   late Animation<double> _rippleScale;
   late Animation<double> _rippleOpacity;
+
+  // Gang video URLs matching palais.astro
+  final List<String> _gangVideoUrls = [
+    'https://peoplesystem.tatdvsonorth.com/images/people/gangHagisun.mp4',
+    'https://peoplesystem.tatdvsonorth.com/images/people/gangHagishi.mp4',
+    'https://peoplesystem.tatdvsonorth.com/images/people/gangPhoenix.mp4',
+    'https://peoplesystem.tatdvsonorth.com/images/people/gangRegalos.mp4',
+    'https://peoplesystem.tatdvsonorth.com/images/people/gangRapeum.mp4',
+  ];
+
+  List<VideoPlayerController> _videoControllers = [];
+  List<bool> _videoInitialized = [];
 
   @override
   void initState() {
@@ -50,12 +63,45 @@ class _WelcomeViewState extends State<WelcomeView>
         );
 
     _dropController.forward();
+
+    // Initialize video controllers
+    _videoInitialized = List.filled(_gangVideoUrls.length, false);
+    for (int i = 0; i < _gangVideoUrls.length; i++) {
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(_gangVideoUrls[i]),
+      );
+      _videoControllers.add(controller);
+
+      controller
+          .initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() {
+                _videoInitialized[i] = true;
+              });
+              controller.setLooping(true);
+              controller.setVolume(0.0); // Muted
+              controller.play();
+            }
+          })
+          .catchError((error) {
+            // Hide video on error (matching palais.astro behavior)
+            if (mounted) {
+              setState(() {
+                _videoInitialized[i] = false;
+              });
+            }
+          });
+    }
   }
 
   @override
   void dispose() {
     _dropController.dispose();
     _rippleController.dispose();
+    for (var controller in _videoControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -79,6 +125,35 @@ class _WelcomeViewState extends State<WelcomeView>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Gang Video Container (matching palais.astro)
+            Container(
+              height: 450,
+              margin: const EdgeInsets.only(bottom: 40),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                itemCount: _gangVideoUrls.length,
+                itemBuilder: (context, index) {
+                  if (!_videoInitialized[index]) {
+                    return const SizedBox.shrink(); // Hide on error
+                  }
+
+                  return Container(
+                    margin: EdgeInsets.only(
+                      right: index < _gangVideoUrls.length - 1 ? -10 : 0,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: AspectRatio(
+                        aspectRatio: _videoControllers[index].value.aspectRatio,
+                        child: VideoPlayer(_videoControllers[index]),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
             // Rapeum Branding
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
@@ -121,7 +196,7 @@ class _WelcomeViewState extends State<WelcomeView>
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.blue.withOpacity(0.5),
+                                  color: Colors.blue.withValues(alpha: 0.5),
                                   width: 2,
                                 ),
                               ),
