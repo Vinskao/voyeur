@@ -4,8 +4,33 @@ import 'viewmodels/dance_viewmodel.dart';
 import 'views/welcome_view.dart';
 import 'views/card_swipe_view.dart';
 import 'views/people_gallery_view.dart';
+import 'package:audio_session/audio_session.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Set up audio session to allow background music from other apps (like Spotify/Apple Music)
+  // to continue playing while this app runs.
+  final session = await AudioSession.instance;
+  await session.configure(
+    const AudioSessionConfiguration(
+      avAudioSessionCategory: AVAudioSessionCategory.ambient,
+      avAudioSessionCategoryOptions:
+          AVAudioSessionCategoryOptions.mixWithOthers,
+      avAudioSessionMode: AVAudioSessionMode.defaultMode,
+      avAudioSessionRouteSharingPolicy:
+          AVAudioSessionRouteSharingPolicy.defaultPolicy,
+      avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+      androidAudioAttributes: AndroidAudioAttributes(
+        contentType: AndroidAudioContentType.sonification,
+        flags: AndroidAudioFlags.audibilityEnforced,
+        usage: AndroidAudioUsage.notification,
+      ),
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+      androidWillPauseWhenDucked: true,
+    ),
+  );
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => DanceViewModel(),

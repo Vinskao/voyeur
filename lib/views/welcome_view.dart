@@ -69,6 +69,7 @@ class _WelcomeViewState extends State<WelcomeView>
     for (int i = 0; i < _gangVideoUrls.length; i++) {
       final controller = VideoPlayerController.networkUrl(
         Uri.parse(_gangVideoUrls[i]),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
       );
       _videoControllers.add(controller);
 
@@ -122,129 +123,132 @@ class _WelcomeViewState extends State<WelcomeView>
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Gang Video Container (matching palais.astro)
-            Container(
-              height: 450,
-              margin: const EdgeInsets.only(bottom: 40),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                itemCount: _gangVideoUrls.length,
-                itemBuilder: (context, index) {
-                  if (!_videoInitialized[index]) {
-                    return const SizedBox.shrink(); // Hide on error
-                  }
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Gang Video Container (matching palais.astro)
+              Container(
+                height: 540,
+                margin: const EdgeInsets.only(bottom: 40),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  itemCount: _gangVideoUrls.length,
+                  itemBuilder: (context, index) {
+                    if (!_videoInitialized[index]) {
+                      return const SizedBox.shrink(); // Hide on error
+                    }
 
-                  return Container(
-                    margin: EdgeInsets.only(
-                      right: index < _gangVideoUrls.length - 1 ? -10 : 0,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: AspectRatio(
-                        aspectRatio: _videoControllers[index].value.aspectRatio,
-                        child: VideoPlayer(_videoControllers[index]),
+                    return Container(
+                      margin: EdgeInsets.only(
+                        right: index < _gangVideoUrls.length - 1 ? -10 : 0,
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Rapeum Branding
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Colors.blue, Colors.cyan],
-              ).createShader(bounds),
-              child: const Text(
-                'Rapeum',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Serif',
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                  shadows: [Shadow(color: Colors.blueAccent, blurRadius: 10)],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AspectRatio(
+                          aspectRatio:
+                              _videoControllers[index].value.aspectRatio,
+                          child: VideoPlayer(_videoControllers[index]),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
 
-            // Interactive Water Drop Area
-            GestureDetector(
-              onTap: () => _startLoadingSequence(viewModel),
-              child: SizedBox(
-                width: 200,
-                height: 200,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Ripple Effect
-                    AnimatedBuilder(
-                      animation: _rippleController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _rippleOpacity.value,
-                          child: Transform.scale(
-                            scale: _rippleScale.value,
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.blue.withValues(alpha: 0.5),
-                                  width: 2,
+              // Rapeum Branding
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Colors.blue, Colors.cyan],
+                ).createShader(bounds),
+                child: const Text(
+                  'Rapeum',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Serif',
+                    color: Colors.white,
+                    letterSpacing: 2.0,
+                    shadows: [Shadow(color: Colors.blueAccent, blurRadius: 10)],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Interactive Water Drop Area
+              GestureDetector(
+                onTap: () => _startLoadingSequence(viewModel),
+                child: SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Ripple Effect
+                      AnimatedBuilder(
+                        animation: _rippleController,
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _rippleOpacity.value,
+                            child: Transform.scale(
+                              scale: _rippleScale.value,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.blue.withValues(alpha: 0.5),
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
 
-                    // Water Drop
-                    AnimatedBuilder(
-                      animation: _dropController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _dropOpacity.value,
-                          child: Transform.translate(
-                            offset: Offset(0, _dropOffset.value),
-                            child: const Icon(
-                              Icons.water_drop,
-                              size: 40,
-                              color: Colors.blue,
+                      // Water Drop
+                      AnimatedBuilder(
+                        animation: _dropController,
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _dropOpacity.value,
+                            child: Transform.translate(
+                              offset: Offset(0, _dropOffset.value),
+                              child: const Icon(
+                                Icons.water_drop,
+                                size: 40,
+                                color: Colors.blue,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20),
-            const Text(
-              'Tap to Enter',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 30),
-            IconButton(
-              icon: const Icon(
-                Icons.local_fire_department,
-                size: 40,
-                color: Colors.orange,
+              const SizedBox(height: 20),
+              const Text(
+                'Tap to Enter',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              onPressed: () {
-                viewModel.enterGallery();
-              },
-            ),
-          ],
+              const SizedBox(height: 30),
+              IconButton(
+                icon: const Icon(
+                  Icons.local_fire_department,
+                  size: 40,
+                  color: Colors.orange,
+                ),
+                onPressed: () {
+                  viewModel.enterGallery();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

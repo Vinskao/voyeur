@@ -190,8 +190,8 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
 
           // Back Button
           Positioned(
-            top: 40,
-            left: 16,
+            top: 50,
+            left: 20,
             child: CircleAvatar(
               backgroundColor: Colors.black.withOpacity(0.5),
               child: IconButton(

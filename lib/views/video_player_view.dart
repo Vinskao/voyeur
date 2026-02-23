@@ -107,6 +107,8 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
 
     await controller.initialize();
+    await controller.setVolume(0.0); // Never play sound
+
     if (_isDisposed) {
       await controller.dispose();
       return;

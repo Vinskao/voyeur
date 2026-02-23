@@ -237,56 +237,38 @@ class _CardSwipeViewState extends State<CardSwipeView> {
             },
           ),
 
-          // Top Bars (Sort Button)
+          // Top Bars (Sort Button & Back Button)
           Positioned(
             top: 50,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(
-                Icons.sort_rounded,
-                size: 30,
-                color: Colors.white,
+            left: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.black26,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.chevron_left,
+                  size: 30,
+                  color: Colors.white,
+                ),
+                onPressed: () => viewModel.exitGallery(),
               ),
-              onPressed: () => _showSortMenu(context, viewModel),
             ),
           ),
 
-          // Navigation Overlay (Arrows)
-          if (viewModel.currentIndex > 0)
-            Positioned(
-              left: 20,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: _buildNavButton(
-                  icon: Icons.chevron_left,
-                  onPressed: () {
-                    _pageController.previousPage(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                    );
-                  },
+          Positioned(
+            top: 50,
+            right: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.black26,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.sort_rounded,
+                  size: 30,
+                  color: Colors.white,
                 ),
+                onPressed: () => _showSortMenu(context, viewModel),
               ),
             ),
-
-          if (viewModel.currentIndex < viewModel.characters.length - 1)
-            Positioned(
-              right: 20,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: _buildNavButton(
-                  icon: Icons.chevron_right,
-                  onPressed: () {
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                ),
-              ),
-            ),
+          ),
 
           // Reload Button
           Positioned(
@@ -305,22 +287,6 @@ class _CardSwipeViewState extends State<CardSwipeView> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNavButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.black26,
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 40, color: Colors.white54),
-        onPressed: onPressed,
       ),
     );
   }
