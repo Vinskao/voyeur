@@ -1,8 +1,19 @@
-# Voyeur - Flutter 專案啟動與啟動教學
+# Voyeur
 
-歡迎使用 **Voyeur**！此專案已從原生 SwiftUI 遷移至 **Flutter**，現在支援 iOS, Android, Web 與 macOS。
+![Flutter](https://img.shields.io/badge/Flutter-3.x-blue.svg) ![Dart](https://img.shields.io/badge/Dart-3.x-blue.svg) ![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Web-lightgrey.svg)
 
-## 📋 準備工具
+> A cross-platform app leveraging Flutter for seamless media experiences on iOS, Android, macOS, and Web.
+
+## Table of Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [Architecture](#architecture)
+- [Design Patterns](#design-patterns)
+
+## Install
+
+### 📋 準備工具
 
 在開始之前，請確保你的 Mac 已安裝：
 - **Flutter SDK** (已由 Homebrew 安裝)
@@ -11,36 +22,9 @@
 
 ---
 
-## 🚀 常用開發指令
+### 📲 部署至實體 iPhone 裝置
 
-在開發過程中，你可能會用到以下指令：
-
-### 1. 基礎環境設定
-```bash
-# 下載專案必要的套件
-flutter pub get
-
-# (僅限 iOS/macOS) 安裝原生依賴庫
-cd ios && pod install && cd ..
-```
-
-### 2. 執行專案
-```bash
-# 啟動 Web (Chrome)
-flutter run -d chrome
-
-# 啟動 macOS 桌面版
-flutter run -d macos
-
-# 啟動已連接的裝置 (iPhone/Android)
-flutter run
-```
-
----
-
-## 📲 部署至實體 iPhone 裝置
-
-### 方法一：使用 Xcode（推薦，最簡單）
+#### 方法一：使用 Xcode（推薦，最簡單）
 
 1. **開啟 Xcode 專案**:
    ```bash
@@ -66,7 +50,7 @@ flutter run
 
 ---
 
-### 方法二：使用 Flutter CLI
+#### 方法二：使用 Flutter CLI
 
 1. **連接 iPhone 並確認裝置**:
    ```bash
@@ -96,7 +80,7 @@ flutter run
 
 ---
 
-### 常見問題
+#### 常見問題
 
 **Q: 提示「Developer Mode required」**  
 A: iOS 16+ 需要啟用開發者模式：  
@@ -113,7 +97,36 @@ A:
 
 ---
 
-## 🎥 Boomerang 特效說明
+## Usage
+
+### 🚀 常用開發指令
+
+在開發過程中，你可能會用到以下指令：
+
+#### 1. 基礎環境設定
+```bash
+## 下載專案必要的套件
+flutter pub get
+
+## (僅限 iOS/macOS) 安裝原生依賴庫
+cd ios && pod install && cd ..
+```
+
+#### 2. 執行專案
+```bash
+## 啟動 Web (Chrome)
+flutter run -d chrome
+
+## 啟動 macOS 桌面版
+flutter run -d macos
+
+## 啟動已連接的裝置 (iPhone/Android)
+flutter run
+```
+
+---
+
+### 🎥 Boomerang 特效說明
 
 本專案實作了 **Boomerang (正序+倒序)** 的循環播放效果：
 
@@ -126,7 +139,14 @@ A:
 
 ---
 
-## 🛠 專案架構
+### 💡 開發小技巧
+
+- **Hot Reload**: 在終端機執行時按下 `r` 鍵可立即看到修改結果，無需重新編譯。
+- **清理緩存**: 若遇到套件問題，可執行 `flutter clean` 後再 `flutter pub get`。
+
+## Architecture
+
+### 🛠 專案架構
 
 - **lib/services/app_config.dart**: 管理 API 連結與資源位址。
 - **lib/services/video_cache_manager.dart**: 處理影片本地緩存。
@@ -135,7 +155,13 @@ A:
 
 ---
 
-## 💡 開發小技巧
+## Design Patterns
 
-- **Hot Reload**: 在終端機執行時按下 `r` 鍵可立即看到修改結果，無需重新編譯。
-- **清理緩存**: 若遇到套件問題，可執行 `flutter clean` 後再 `flutter pub get`。
+### 🎯 設計模式 (Design Patterns)
+
+本行動裝置跨平台專案採用以下設計模式維持代碼整潔與模組化：
+
+- **MVVM / BLoC架構 (衍生自觀察者模式)**: 透過 ViewModels (如 `dance_viewmodel.dart`) 將 UI 狀態與業務邏輯分離，達成事件響應驅動。
+- **單例模式 (Singleton)**: 運用於 `app_config.dart` 與緩存管理器，確保全局只有唯一一個配置實例或資源實例。
+- **建造者模式 (Builder Pattern)**: Flutter 核心元件樹建構機制，透過各類 Widget 的 `build` 方法反覆疊加與封裝，進行複雜的介面合成。
+
