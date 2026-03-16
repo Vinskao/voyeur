@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../viewmodels/dance_viewmodel.dart';
 import '../models/person.dart';
 import '../services/people_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PeopleGalleryView extends StatefulWidget {
   const PeopleGalleryView({super.key});
@@ -285,18 +286,19 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        url,
+      child: CachedNetworkImage(
+        imageUrl: url,
         height: widget.height,
-        cacheWidth: widget.cacheWidth,
+        memCacheWidth: widget.cacheWidth,
         fit: widget.fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null || !widget.showLoading) return child;
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
+        placeholder:
+            (context, url) =>
+                widget.showLoading
+                    ? const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
+                    : const SizedBox.shrink(),
+        errorWidget: (context, url, error) {
           // If the image fails to load, mark it as invalid and show next one
           if (!_invalidIndices.contains(_currentIndex)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {

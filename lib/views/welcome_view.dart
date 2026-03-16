@@ -251,6 +251,21 @@ class _WelcomeViewState extends State<WelcomeView>
           ),
         ),
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(top: 40.0),
+        child: Align(
+          alignment: Alignment.topRight,
+          child: IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white54, size: 30),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Clearing storage and reloading...')),
+              );
+              viewModel.reload();
+            },
+          ),
+        ),
+      ),
     );
   }
 }

@@ -29,3 +29,19 @@ Then in Xcode: `Shift + Command + K` (Clean Build Folder).
 If Swift Package Manager (SPM) or CocoaPods acts up:
 - **SPM**: `File` > `Packages` > `Reset Package Caches`.
 - **General Cache**: `rm -rf ~/Library/Caches/org.swift.swiftpm`
+
+### Data Synchronization (Backend & Articles)
+If the `articles` table is empty or needs a manual refresh:
+1. **Frontend Sync**: Trigger from the frontend API which reads local markdown files and pushes to backend.
+   ```bash
+   curl -X POST http://localhost:4321/api/sync-articles
+   ```
+2. **Backend Direct**: If the frontend endpoint is unavailable, use the provided Python initialization script.
+   ```bash
+   cd maya-sawa
+   poetry run python scripts/init_articles.py
+   ```
+3. **Verify**: Check article count via the Paprika API.
+   ```bash
+   curl -s http://localhost:8000/maya-sawa/paprika/articles | jq '.total'
+   ```

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class VideoCacheManager {
   static final VideoCacheManager shared = VideoCacheManager._();
@@ -10,7 +11,7 @@ class VideoCacheManager {
   VideoCacheManager._();
 
   Future<String> _getCacheDirectoryPath() async {
-    final Directory cacheDir = await getTemporaryDirectory();
+    final Directory cacheDir = await getApplicationSupportDirectory();
     final String path = "${cacheDir.path}/$_cacheDirectoryName";
     final Directory dir = Directory(path);
     if (!await dir.exists()) {
@@ -48,11 +49,21 @@ class VideoCacheManager {
   }
 
   Future<void> clearAllCache() async {
+    await _clearVideoCache();
+    await _clearImageCache();
+  }
+
+  Future<void> _clearVideoCache() async {
     final String path = await _getCacheDirectoryPath();
     final Directory dir = Directory(path);
     if (await dir.exists()) {
       await dir.delete(recursive: true);
-      print("Cache cleared successfully.");
+      print("Video cache cleared successfully.");
     }
+  }
+
+  Future<void> _clearImageCache() async {
+    await DefaultCacheManager().emptyCache();
+    print("Image cache cleared successfully.");
   }
 }
