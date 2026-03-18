@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart';
 import '../models/person.dart';
 import '../models/video_result.dart';
 import '../models/character_videos.dart';
 import '../services/people_service.dart';
 import '../services/video_prober.dart';
-import '../services/video_cache_manager.dart';
+import '../services/asset_cache_manager.dart';
+import '../services/app_config.dart';
 
 enum AppState { welcome, loading, browsing, gallery, error }
 
@@ -25,6 +27,8 @@ enum SortFilter {
 }
 
 class DanceViewModel extends ChangeNotifier {
+  final Logger _logger = Logger();
+  
   AppState _appState = AppState.welcome;
   List<CharacterVideos> _characters = [];
   int _currentIndex = 0;
@@ -43,7 +47,9 @@ class DanceViewModel extends ChangeNotifier {
 
   final PeopleService _peopleService = PeopleService.shared;
   final VideoProber _videoProber = VideoProber.shared;
-  final VideoCacheManager _cacheManager = VideoCacheManager.shared;
+  final AssetCacheManager _cacheManager = AssetCacheManager.shared;
+
+  List<String> get gangVideoUrls => AppConfig.gangVideoUrls;
 
   void enterGallery() {
     _appState = AppState.gallery;
@@ -56,6 +62,7 @@ class DanceViewModel extends ChangeNotifier {
   }
 
   void reload() {
+    _logger.i("Reloading data and clearing cache...");
     _characters = [];
     _currentIndex = 0;
     _currentSort = SortFilter.none;
@@ -64,197 +71,171 @@ class DanceViewModel extends ChangeNotifier {
   }
 
   Future<void> scanForVideos() async {
+    _setLoading(true, message: "Fetching character details...");
     _appState = AppState.loading;
-    _statusMessage = "Fetching character details...";
-    _isLoading = true;
-    notifyListeners();
 
     try {
-      // 1. Fetch detailed people data
-      final people = await _peopleService.fetchPeople();
+      // 1. Fetch and enrich people
+      final enrichedPeople = await _getEnrichedPeople();
+      
+      _setStatus("Found ${enrichedPeople.length} characters. Probing videos...");
 
-      // 2. Fetch batch damage (totalPower)
-      _statusMessage = "Calculating total power...";
-      notifyListeners();
-      final damageResults = await _peopleService.fetchBatchDamage(
-        people.map((p) => p.name).toList(),
-      );
+      // 2. Discover videos
+      final allFoundVideos = await _probeAllCharacters(enrichedPeople);
 
-      // Map damage results back to people
-      final enrichedPeople = people.map((p) {
-        return p.copyWith(totalPower: damageResults[p.name]);
-      }).toList();
-
-      _statusMessage =
-          "Found ${enrichedPeople.length} characters. Probing videos...";
-      notifyListeners();
-
-      List<VideoResult> allFoundVideos = [];
-
-      const int chunkSize = 5;
-      for (int i = 0; i < enrichedPeople.length; i += chunkSize) {
-        int end = (i + chunkSize < enrichedPeople.length)
-            ? i + chunkSize
-            : enrichedPeople.length;
-        final chunk = enrichedPeople.sublist(i, end);
-
-        final chunkResults = await Future.wait(
-          chunk.map((person) async {
-            final results = await _videoProber.probeCharacter(person);
-            // Attach person data to results for sorting later
-            return results.map((res) => res.copyWith(person: person)).toList();
-          }),
-        );
-
-        for (var res in chunkResults) {
-          allFoundVideos.addAll(res);
-        }
-
-        _statusMessage = "Scanned $end/${enrichedPeople.length} characters...";
-        notifyListeners();
-      }
-
-      // Group videos by person
-      final Map<String, List<VideoResult>> grouped = {};
-      // Also keep track of the person object for each name
-      final Map<String, Person> personMap = {};
-
-      for (var video in allFoundVideos) {
-        if (!grouped.containsKey(video.personName)) {
-          grouped[video.personName] = [];
-          if (video.person != null) {
-            personMap[video.personName] = video.person!;
-          }
-        }
-        grouped[video.personName]!.add(video);
-      }
-
-      // Convert to CharacterVideos list
-      _characters = grouped.entries.map((entry) {
-        // Fallback to a basic Person if not found (shouldn't happen with correct logic)
-        final person = personMap[entry.key] ?? Person(name: entry.key);
-        return CharacterVideos(person: person, videos: entry.value);
-      }).toList();
-
-      if (_characters.isEmpty) {
-        _appState = AppState.error;
-        _errorMessage = "No videos found.";
-      } else {
-        _appState = AppState.browsing;
-        _statusMessage = "Found ${_characters.length} characters.";
-
-        // Background caching
-        _autoCacheVideos();
-      }
-    } catch (e) {
+      // 3. Group and finalize
+      _finalizeCharacters(allFoundVideos);
+      
+    } catch (e, stack) {
+      _logger.e("Error during scan: $e", stackTrace: stack);
       _appState = AppState.error;
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
+  }
+
+  Future<List<Person>> _getEnrichedPeople() async {
+    final people = await _peopleService.fetchPeople();
+    
+    _setStatus("Calculating total power...");
+    final damageResults = await _peopleService.fetchBatchDamage(
+      people.map((p) => p.name).toList(),
+    );
+
+    return people.map((p) {
+      return p.copyWith(totalPower: damageResults[p.name]);
+    }).toList();
+  }
+
+  Future<List<VideoResult>> _probeAllCharacters(List<Person> people) async {
+    List<VideoResult> allFoundVideos = [];
+    const int chunkSize = 5;
+
+    for (int i = 0; i < people.length; i += chunkSize) {
+      int end = (i + chunkSize < people.length) ? i + chunkSize : people.length;
+      final chunk = people.sublist(i, end);
+
+      final chunkResults = await Future.wait(
+        chunk.map((person) async {
+          final results = await _videoProber.probeCharacter(person);
+          return results.map((res) => res.copyWith(person: person)).toList();
+        }),
+      );
+
+      for (var res in chunkResults) {
+        allFoundVideos.addAll(res);
+      }
+
+      _setStatus("Scanned $end/${people.length} characters...");
+    }
+    return allFoundVideos;
+  }
+
+  void _finalizeCharacters(List<VideoResult> allFoundVideos) {
+    final Map<String, List<VideoResult>> grouped = {};
+    final Map<String, Person> personMap = {};
+
+    for (var video in allFoundVideos) {
+      if (!grouped.containsKey(video.personName)) {
+        grouped[video.personName] = [];
+        if (video.person != null) {
+          personMap[video.personName] = video.person!;
+        }
+      }
+      grouped[video.personName]!.add(video);
+    }
+
+    _characters = grouped.entries.map((entry) {
+      final person = personMap[entry.key] ?? Person(name: entry.key);
+      return CharacterVideos(person: person, videos: entry.value);
+    }).toList();
+
+    if (_characters.isEmpty) {
+      _appState = AppState.error;
+      _errorMessage = "No videos found.";
+      _logger.w("Discovery finished with 0 characters.");
+    } else {
+      _appState = AppState.browsing;
+      _setStatus("Found ${_characters.length} characters.");
+      _autoCacheVideos();
+    }
+  }
+
+  void _setStatus(String message) {
+    _statusMessage = message;
+    notifyListeners();
+  }
+
+  void _setLoading(bool loading, {String? message}) {
+    _isLoading = loading;
+    if (message != null) _statusMessage = message;
+    notifyListeners();
   }
 
   void sortVideos(SortFilter filter) {
     if (_characters.isEmpty) return;
-
     _currentSort = filter;
 
-    switch (filter) {
-      case SortFilter.heightAsc:
-        _characters.sort(
-          (a, b) => (a.person.heightCm ?? 0).compareTo(b.person.heightCm ?? 0),
-        );
-        break;
-      case SortFilter.heightDesc:
-        _characters.sort(
-          (a, b) => (b.person.heightCm ?? 0).compareTo(a.person.heightCm ?? 0),
-        );
-        break;
-      case SortFilter.weightAsc:
-        _characters.sort(
-          (a, b) => (a.person.weightKg ?? 0).compareTo(b.person.weightKg ?? 0),
-        );
-        break;
-      case SortFilter.weightDesc:
-        _characters.sort(
-          (a, b) => (b.person.weightKg ?? 0).compareTo(a.person.weightKg ?? 0),
-        );
-        break;
-      case SortFilter.physicPowerAsc:
-        _characters.sort(
-          (a, b) =>
-              (a.person.physicPower ?? 0).compareTo(b.person.physicPower ?? 0),
-        );
-        break;
-      case SortFilter.physicPowerDesc:
-        _characters.sort(
-          (a, b) =>
-              (b.person.physicPower ?? 0).compareTo(a.person.physicPower ?? 0),
-        );
-        break;
-      case SortFilter.magicPowerAsc:
-        _characters.sort(
-          (a, b) =>
-              (a.person.magicPower ?? 0).compareTo(b.person.magicPower ?? 0),
-        );
-        break;
-      case SortFilter.magicPowerDesc:
-        _characters.sort(
-          (a, b) =>
-              (b.person.magicPower ?? 0).compareTo(a.person.magicPower ?? 0),
-        );
-        break;
-      case SortFilter.utilityPowerAsc:
-        _characters.sort(
-          (a, b) => (a.person.utilityPower ?? 0).compareTo(
-            b.person.utilityPower ?? 0,
-          ),
-        );
-        break;
-      case SortFilter.utilityPowerDesc:
-        _characters.sort(
-          (a, b) => (b.person.utilityPower ?? 0).compareTo(
-            a.person.utilityPower ?? 0,
-          ),
-        );
-        break;
-      case SortFilter.totalPowerAsc:
-        _characters.sort(
-          (a, b) =>
-              (a.person.totalPower ?? 0).compareTo(b.person.totalPower ?? 0),
-        );
-        break;
-      case SortFilter.totalPowerDesc:
-        _characters.sort(
-          (a, b) =>
-              (b.person.totalPower ?? 0).compareTo(a.person.totalPower ?? 0),
-        );
-        break;
-      case SortFilter.none:
-        break;
-    }
+    _characters.sort((a, b) {
+      switch (filter) {
+        case SortFilter.heightAsc:
+          return (a.person.heightCm ?? 0).compareTo(b.person.heightCm ?? 0);
+        case SortFilter.heightDesc:
+          return (b.person.heightCm ?? 0).compareTo(a.person.heightCm ?? 0);
+        case SortFilter.weightAsc:
+          return (a.person.weightKg ?? 0).compareTo(b.person.weightKg ?? 0);
+        case SortFilter.weightDesc:
+          return (b.person.weightKg ?? 0).compareTo(a.person.weightKg ?? 0);
+        case SortFilter.physicPowerAsc:
+          return (a.person.physicPower ?? 0).compareTo(b.person.physicPower ?? 0);
+        case SortFilter.physicPowerDesc:
+          return (b.person.physicPower ?? 0).compareTo(a.person.physicPower ?? 0);
+        case SortFilter.magicPowerAsc:
+          return (a.person.magicPower ?? 0).compareTo(b.person.magicPower ?? 0);
+        case SortFilter.magicPowerDesc:
+          return (b.person.magicPower ?? 0).compareTo(a.person.magicPower ?? 0);
+        case SortFilter.utilityPowerAsc:
+          return (a.person.utilityPower ?? 0).compareTo(b.person.utilityPower ?? 0);
+        case SortFilter.utilityPowerDesc:
+          return (b.person.utilityPower ?? 0).compareTo(a.person.utilityPower ?? 0);
+        case SortFilter.totalPowerAsc:
+          return (a.person.totalPower ?? 0).compareTo(b.person.totalPower ?? 0);
+        case SortFilter.totalPowerDesc:
+          return (b.person.totalPower ?? 0).compareTo(a.person.totalPower ?? 0);
+        case SortFilter.none:
+          return 0;
+      }
+    });
 
-    // Reset to the first card to show the new sort order clearly
     _currentIndex = 0;
-
     notifyListeners();
   }
 
   Future<void> _autoCacheVideos() async {
+    _logger.d("Starting auto-cache...");
+    
+    // Gang videos
+    for (var url in AppConfig.gangVideoUrls) {
+      if (!await _cacheManager.isVideoCached(url)) {
+        _cacheManager.cacheVideo(url).catchError((e) {
+          _logger.w("Failed to cache gang video $url: $e");
+        });
+      }
+    }
+
+    // Character videos
     for (var char in _characters) {
       for (var video in char.videos) {
-        if (!await _cacheManager.isVideoCached(video.filename)) {
-          try {
-            await _cacheManager.cacheVideo(video.url, video.filename);
-          } catch (e) {
-            print("Auto-cache failed for ${video.filename}: $e");
-          }
+        if (!await _cacheManager.isVideoCached(video.url)) {
+          _cacheManager.cacheVideo(video.url).catchError((e) {
+             _logger.w("Failed to cache video ${video.url}: $e");
+          });
         }
       }
     }
-    _statusMessage = "All videos ready.";
-    notifyListeners();
+    
+    _setStatus("All videos ready.");
   }
 
   void setCurrentIndex(int index) {
@@ -279,5 +260,9 @@ class DanceViewModel extends ChangeNotifier {
       _currentIndex--;
       notifyListeners();
     }
+  }
+
+  Future<String?> getCachedVideoPath(String url) async {
+    return await _cacheManager.getCachedVideoPath(url);
   }
 }

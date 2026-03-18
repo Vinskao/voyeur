@@ -24,58 +24,11 @@
 
 ### 📲 部署至實體 iPhone 裝置
 
-#### 方法一：使用 Xcode（推薦，最簡單）
+#### 方法一：使用 Flutter CLI
 
-1. **開啟 Xcode 專案**:
+1. **直接執行**:
    ```bash
-   open ios/Runner.xcworkspace
-   ```
-
-2. **選擇你的 iPhone**:
-   - 在 Xcode 頂部工具列，點擊裝置選擇器
-   - 選擇你已連接的 iPhone（會顯示裝置名稱，例如「Vins 的 iPhone」）
-
-3. **設定簽署**（首次需要）:
-   - 點擊左側專案導航中的 **Runner**
-   - 選擇 **Signing & Capabilities** 標籤
-   - 在 **Team** 下拉選單中登入你的 Apple ID
-
-4. **執行**:
-   - 點擊左上角的 **播放按鈕 ▶️**
-   - Xcode 會自動編譯並安裝到你的 iPhone
-
-5. **信任開發者**（首次需要）:
-   - 在 iPhone 上前往 **設定 → 一般 → VPN 與裝置管理**
-   - 點擊你的 Apple ID，選擇「信任」
-
----
-
-#### 方法二：使用 Flutter CLI
-
-1. **連接 iPhone 並確認裝置**:
-   ```bash
-   flutter devices
-   ```
-   應該會看到類似：
-   ```
-   iPhone 17 Pro Max (mobile) • 00008030-XXXXXXXXXXXX • ios • iOS 17.2
-   ```
-
-2. **直接執行**:
-   ```bash
-   # 自動選擇已連接的 iPhone
-   flutter run
-   
-   # 或指定裝置 ID
-   flutter run -d 00008030-XXXXXXXXXXXX
-   ```
-
-3. **首次部署可能需要**:
-   ```bash
-   cd ios
-   pod install
-   cd ..
-   flutter run
+   flutter clean && flutter build ipa --release --export-method development
    ```
 
 ---
@@ -149,9 +102,10 @@ flutter run
 ### 🛠 專案架構
 
 - **lib/services/app_config.dart**: 管理 API 連結與資源位址。
-- **lib/services/video_cache_manager.dart**: 處理影片本地緩存。
-- **lib/viewmodels/dance_viewmodel.dart**: 核心業務邏輯與影片探測。
-- **lib/views/**: 所有 UI 視圖（包含水滴動畫與卡片滑動）。
+- **lib/services/asset_cache_manager.dart**: 處理影片與圖片的本地緩存 (Unified Caching)。
+- **lib/services/video_prober.dart**: 負責自動探測與發現角色相關影片。
+- **lib/viewmodels/dance_viewmodel.dart**: 核心業務邏輯、狀態管理與資料排序。
+- **lib/views/**: 所有 UI 視圖（包含水滴動畫、卡片滑動與畫廊展示）。
 
 ---
 
@@ -161,7 +115,49 @@ flutter run
 
 本行動裝置跨平台專案採用以下設計模式維持代碼整潔與模組化：
 
-- **MVVM / BLoC架構 (衍生自觀察者模式)**: 透過 ViewModels (如 `dance_viewmodel.dart`) 將 UI 狀態與業務邏輯分離，達成事件響應驅動。
-- **單例模式 (Singleton)**: 運用於 `app_config.dart` 與緩存管理器，確保全局只有唯一一個配置實例或資源實例。
-- **建造者模式 (Builder Pattern)**: Flutter 核心元件樹建構機制，透過各類 Widget 的 `build` 方法反覆疊加與封裝，進行複雜的介面合成。
+- **MVVM 架構**: 透過 ViewModels (如 `dance_viewmodel.dart`) 將 UI 狀態與業務邏輯分離，達成事件響應驅動。
+- **單例模式 (Singleton)**: 運用於 `app_config.dart`、`asset_cache_manager.dart` 等 Service 層，確保全局資源唯一性。
+- **Repository/Service Pattern**: 將資料獲取 (Dio) 與邏輯探測 (VideoProber) 封裝於服務層， ViewModel 僅負責協調。
+
+### 📊 系統設計圖 (System Design)
+
+```mermaid
+graph TD
+    subgraph View
+        WA[WelcomeView]
+        CSV[CardSwipeView]
+        VCV[VideoCardView]
+        PGV[PeopleGalleryView]
+        VPV[VideoPlayerView]
+    end
+
+    subgraph ViewModel
+        DVM[DanceViewModel]
+    end
+
+    subgraph Service
+        PS[PeopleService]
+        VP[VideoProber]
+        ACM[AssetCacheManager]
+        AC[AppConfig]
+    end
+
+    subgraph Storage
+        SP[SharedPreferences]
+        FCM[flutter_cache_manager]
+    end
+
+    WA --> DVM
+    CSV --> DVM
+    VCV --> DVM
+    PGV -- uses --> PS
+    DVM -- uses --> PS
+    DVM -- uses --> VP
+    DVM -- uses --> ACM
+    VP -- uses --> AC
+    VP -- uses --> SP
+    ACM -- uses --> FCM
+    VPV -- uses --> ACM
+    VCV -- renders --> VPV
+```
 

@@ -1,21 +1,30 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:logger/logger.dart';
 import '../models/video_result.dart';
-import '../services/video_cache_manager.dart';
+import '../services/asset_cache_manager.dart';
 
 class VideoPlayerView extends StatefulWidget {
   final List<VideoResult> videos;
+  final bool isPaused;
 
-  const VideoPlayerView({super.key, required this.videos});
+  const VideoPlayerView({
+    super.key,
+    required this.videos,
+    this.isPaused = false,
+  });
 
   @override
   State<VideoPlayerView> createState() => _VideoPlayerViewState();
 }
 
 class _VideoPlayerViewState extends State<VideoPlayerView> {
-  // Map to hold initialized controllers for seamless playback
-  final Map<int, VideoPlayerController> _controllers = {};
+  final Logger _logger = Logger();
+  
+  // Controller pool to limit memory usage
+  final Map<int, VideoPlayerController> _controllerPool = {};
+  static const int _maxControllers = 3;
 
   int _currentVideoIndex = 0;
   bool _isInitialized = false;
@@ -33,13 +42,39 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   @override
   void didUpdateWidget(VideoPlayerView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the playlist changes significantly (e.g. different person), reset.
+    
+    // Check if playlist changed
     if (widget.videos.isNotEmpty &&
         oldWidget.videos.isNotEmpty &&
         widget.videos.first.url != oldWidget.videos.first.url) {
       _disposeAllControllers();
       _currentVideoIndex = 0;
       _initializeCurrentAndNext();
+      return;
+    }
+
+    // Check if pause state changed
+    if (widget.isPaused != oldWidget.isPaused) {
+      _handlePauseStateChange();
+    }
+  }
+
+  void _handlePauseStateChange() async {
+    final controller = _controllerPool[_currentVideoIndex];
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (widget.isPaused) {
+      await controller.pause();
+    } else {
+      if (_isPlayingForward) {
+        await controller.play();
+      } else {
+        // If it was in reverse playback when paused, it might be tricky.
+        // For simplicity, if we resume and we were in reverse, 
+        // let's just keep the reverse logic going if it was running.
+        // Actually, _reversePlayback uses _isPlayingForward in its while loop.
+        // If we were reversed and it's still !_isPlayingForward, the loop is already running or will be triggered.
+      }
     }
   }
 
@@ -54,44 +89,56 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
 
     try {
-      // 1. Initialize current video
-      await _initializeControllerAtIndex(_currentVideoIndex);
+      final controller = await _getControllerAtIndex(_currentVideoIndex);
 
-      if (mounted && !_isDisposed) {
+      if (mounted && !_isDisposed && controller != null) {
         setState(() {
           _isInitialized = true;
           _isPlayingForward = true;
         });
 
-        final controller = _controllers[_currentVideoIndex];
-        if (controller != null) {
-          controller.addListener(_boomerangListener);
+        controller.addListener(_boomerangListener);
+        
+        // Final check for state errors
+        if (controller.value.hasError) {
+          throw Exception("Initialization error: ${controller.value.errorDescription}");
+        }
+
+        if (!widget.isPaused) {
           await controller.play();
         }
 
-        // 2. Preload next video in background
-        _preloadNextVideo();
+        _preloadNext();
       }
     } catch (e) {
+      final video = widget.videos[_currentVideoIndex];
+      final errorMsg = "Failed to load ${video.filename}: $e";
+      _logger.e(errorMsg);
+      
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = errorMsg;
         });
       }
+
+      // Proactively clear cache for the failing video
+      AssetCacheManager.shared.removeCachedVideo(video.url);
     }
   }
 
-  Future<void> _initializeControllerAtIndex(int index) async {
-    if (_isDisposed) return;
-    if (_controllers.containsKey(index)) return; // Already initialized
+  Future<VideoPlayerController?> _getControllerAtIndex(int index) async {
+    if (_isDisposed) return null;
+    if (_controllerPool.containsKey(index)) return _controllerPool[index];
+
+    // Maintain pool size
+    if (_controllerPool.length >= _maxControllers) {
+      _evictOldestController(index);
+    }
 
     final video = widget.videos[index];
-    final cachedPath = await VideoCacheManager.shared.getCachedFilePath(
-      video.filename,
-    );
+    final cachedPath = await AssetCacheManager.shared.getCachedVideoPath(video.url);
 
     VideoPlayerController controller;
-    // CRITICAL: Mix with other apps (podcasts)
     final options = VideoPlayerOptions(mixWithOthers: true);
 
     if (cachedPath != null) {
@@ -107,46 +154,56 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
 
     await controller.initialize();
-    await controller.setVolume(0.0); // Never play sound
+    await controller.setVolume(0.0);
 
     if (_isDisposed) {
       await controller.dispose();
-      return;
+      return null;
     }
-    _controllers[index] = controller;
+    
+    _controllerPool[index] = controller;
+    return controller;
   }
 
-  void _preloadNextVideo() {
+  void _evictOldestController(int currentIndex) {
+    // Evict index furthest from currentIndex
+    int? furthestIndex;
+    int maxDistance = -1;
+
+    _controllerPool.keys.forEach((key) {
+      final distance = (key - currentIndex).abs();
+      if (distance > maxDistance) {
+        maxDistance = distance;
+        furthestIndex = key;
+      }
+    });
+
+    if (furthestIndex != null) {
+      final controller = _controllerPool.remove(furthestIndex);
+      controller?.removeListener(_boomerangListener);
+      controller?.dispose();
+      _logger.d("Evicted controller at index $furthestIndex from pool.");
+    }
+  }
+
+  void _preloadNext() {
     if (widget.videos.length <= 1) return;
-
-    // Preload next 2 videos to be safe? Or just next.
-    // If seamless is key, let's preload all for small lists (< 5).
-    // Otherwise just next + nextNext.
-
     final nextIndex = (_currentVideoIndex + 1) % widget.videos.length;
-    _initializeControllerAtIndex(nextIndex)
-        .then((_) {
-          // Also loop if needed
-          if (widget.videos.length > 2) {
-            final nextNext = (nextIndex + 1) % widget.videos.length;
-            _initializeControllerAtIndex(nextNext);
-          }
-        })
-        .catchError((e) {
-          print("Preload error: $e");
-        });
+    _getControllerAtIndex(nextIndex).catchError((e) {
+      _logger.w("Preload failed: $e");
+      return null;
+    });
   }
 
   void _boomerangListener() {
-    final controller = _controllers[_currentVideoIndex];
+    final controller = _controllerPool[_currentVideoIndex];
     if (controller == null || !controller.value.isInitialized) return;
 
     final position = controller.value.position;
     final duration = controller.value.duration;
 
     if (_isPlayingForward) {
-      // Check if reached the end
-      if (position >= duration - const Duration(milliseconds: 100)) {
+      if (position >= duration - const Duration(milliseconds: 50)) {
         _isPlayingForward = false;
         _playBackward();
       }
@@ -154,47 +211,30 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   }
 
   void _playBackward() async {
-    final controller = _controllers[_currentVideoIndex];
+    final controller = _controllerPool[_currentVideoIndex];
     if (controller == null) return;
 
     await controller.pause();
-    final duration = controller.value.duration;
-
-    // Manually step backward frame by frame
-    _reversePlayback(duration);
+    _reversePlayback(controller.value.duration);
   }
 
   void _reversePlayback(Duration duration) async {
-    final controller = _controllers[_currentVideoIndex];
+    final controller = _controllerPool[_currentVideoIndex];
     if (controller == null || !mounted || _isDisposed) return;
 
-    const frameInterval = Duration(milliseconds: 33); // ~30fps
+    const frameInterval = Duration(milliseconds: 40); // Slightly slower for stability
     Duration currentPosition = duration;
 
-    while (currentPosition > Duration.zero &&
-        !_isPlayingForward &&
-        mounted &&
-        !_isDisposed) {
-      // Check if logic switched while we were waiting
-      if (_currentVideoIndex !=
-          widget.videos.indexOf(widget.videos[_currentVideoIndex])) {
-        // Index might be stale if updatedWidget happened?
-        // Actually _currentVideoIndex is local state.
-      }
+    while (currentPosition > Duration.zero && !_isPlayingForward && mounted && !_isDisposed) {
+      if (_controllerPool[_currentVideoIndex] != controller) return;
 
-      // Ensure controller is still valid
-      if (_controllers[_currentVideoIndex] != controller) return;
-
-      currentPosition -= frameInterval;
-      if (currentPosition < Duration.zero) {
-        currentPosition = Duration.zero;
-      }
+      currentPosition -= const Duration(milliseconds: 100); // Larger steps for "speedy" reverse
+      if (currentPosition < Duration.zero) currentPosition = Duration.zero;
 
       await controller.seekTo(currentPosition);
       await Future.delayed(frameInterval);
     }
 
-    // Finished reversing
     if (!_isPlayingForward && mounted && !_isDisposed) {
       _switchToNextVideo();
     }
@@ -204,42 +244,30 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     final prevIndex = _currentVideoIndex;
     final nextIndex = (prevIndex + 1) % widget.videos.length;
 
-    // 1. Remove listener from old
-    final oldController = _controllers[prevIndex];
+    final oldController = _controllerPool[prevIndex];
     oldController?.removeListener(_boomerangListener);
-
-    // 2. Ideally nextIndex is already in _controllers via preload.
-    if (!_controllers.containsKey(nextIndex)) {
-      // Panic load (should show loading if not ready)
-      await _initializeControllerAtIndex(nextIndex);
-    }
-
-    if (!mounted || _isDisposed) return;
+    // Keep in pool, but pause
+    oldController?.pause();
 
     setState(() {
       _currentVideoIndex = nextIndex;
       _isPlayingForward = true;
     });
 
-    // 3. Play new
-    final newController = _controllers[nextIndex];
-    if (newController != null) {
-      // Ensure audio mix is set (it is in init)
+    final newController = await _getControllerAtIndex(nextIndex);
+    if (newController != null && mounted && !_isDisposed) {
       newController.addListener(_boomerangListener);
       newController.play();
+      _preloadNext();
     }
-
-    // 4. Trigger preload for subsequent
-    final subsequentIndex = (nextIndex + 1) % widget.videos.length;
-    _initializeControllerAtIndex(subsequentIndex);
   }
 
   void _disposeAllControllers() {
-    _controllers.forEach((key, controller) {
+    _controllerPool.forEach((key, controller) {
       controller.removeListener(_boomerangListener);
       controller.dispose();
     });
-    _controllers.clear();
+    _controllerPool.clear();
   }
 
   @override
@@ -253,21 +281,51 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return Center(
-        child: Text(
-          "Error: $_error",
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 30),
+              const SizedBox(height: 10),
+              Text(
+                "Video Error:\n$_error",
+                style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _disposeAllControllers();
+                  _initializeCurrentAndNext();
+                },
+                icon: const Icon(Icons.refresh, size: 14),
+                label: const Text("Retry", style: TextStyle(fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white10,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    final controller = _controllers[_currentVideoIndex];
+    final controller = _controllerPool[_currentVideoIndex];
 
-    // If not ready, show spinner
-    if (!_isInitialized ||
-        controller == null ||
-        !controller.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+    if (!_isInitialized || controller == null || !controller.value.isInitialized) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(strokeWidth: 2),
+            SizedBox(height: 8),
+            Text("Loading...", style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
+        ),
+      );
     }
 
     return SizedBox.expand(

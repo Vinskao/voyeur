@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:logger/logger.dart';
 import '../models/person.dart';
 import 'app_config.dart';
 
@@ -10,6 +11,7 @@ class PeopleService {
       receiveTimeout: const Duration(seconds: 120),
     ),
   );
+  final Logger _logger = Logger();
 
   PeopleService._();
 
@@ -30,35 +32,32 @@ class PeopleService {
         dynamic data = response.data;
 
         // Handle case where response is a String (e.g. valid JSON string but Dio didn't parse it)
-        if (data is String) {
-          print(
-            "Warning: Response data is String. Attempting to decode if needed.",
+          _logger.w(
+            "Response data is String. Attempting to decode if needed.",
           );
-          // Usually Dio handles this if responseType is json.
-        }
 
         if (data is List) {
           return data.map((json) => Person.fromJson(json)).toList();
         } else {
-          print("Unexpected response format: ${data.runtimeType} - $data");
+          _logger.e("Unexpected response format: ${data.runtimeType} - $data");
           throw Exception("Unexpected response format: ${data.runtimeType}");
         }
       } else {
-        print("Server Error: ${response.statusCode} ${response.statusMessage}");
-        print("Response Body: ${response.data}");
+        _logger.e("Server Error: ${response.statusCode} ${response.statusMessage}");
+        _logger.e("Response Body: ${response.data}");
         throw Exception(
           "Failed to fetch people details: ${response.statusCode}",
         );
       }
     } catch (e) {
       if (e is DioException) {
-        print("DioError fetching people: ${e.message}");
+        _logger.e("DioError fetching people: ${e.message}");
         if (e.response != null) {
-          print("Response Status: ${e.response?.statusCode}");
-          print("Response Data: ${e.response?.data}");
+          _logger.e("Response Status: ${e.response?.statusCode}");
+          _logger.e("Response Data: ${e.response?.data}");
         }
       }
-      print("Error fetching people details: $e");
+      _logger.e("Error fetching people details: $e");
       rethrow;
     }
   }
@@ -73,18 +72,18 @@ class PeopleService {
         final Map<String, dynamic> data = response.data['damageResults'] ?? {};
         return data.map((key, value) => MapEntry(key, value as int));
       } else {
-        print("Batch damage API error: ${response.statusCode}");
+        _logger.e("Batch damage API error: ${response.statusCode}");
         return {};
       }
     } catch (e) {
       if (e is DioException) {
-        print("DioError fetching batch damage: ${e.message}");
+        _logger.e("DioError fetching batch damage: ${e.message}");
         if (e.response != null) {
-          print("Response data: ${e.response?.data}");
-          print("Response headers: ${e.response?.headers}");
+          _logger.e("Response data: ${e.response?.data}");
+          _logger.e("Response headers: ${e.response?.headers}");
         }
       }
-      print("Error fetching batch damage: $e");
+      _logger.e("Error fetching batch damage: $e");
       return {};
     }
   }

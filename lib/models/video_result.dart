@@ -24,6 +24,20 @@ class VideoResult {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'personName': personName,
+    'url': url,
+    'filename': filename,
+  };
+
+  factory VideoResult.fromJson(Map<String, dynamic> json) {
+    return VideoResult(
+      personName: json['personName'] as String,
+      url: json['url'] as String,
+      filename: json['filename'] as String,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../viewmodels/dance_viewmodel.dart';
 import '../models/person.dart';
 import '../services/people_service.dart';
+import '../services/asset_cache_manager.dart';
+import '../services/app_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class PeopleGalleryView extends StatefulWidget {
@@ -227,7 +229,7 @@ class RotatingCharacterImage extends StatefulWidget {
     required this.personName,
     required this.height,
     required this.cacheWidth,
-    this.fit = BoxFit.cover,
+    this.fit = BoxFit.fitHeight,
     this.showLoading = false,
   });
 
@@ -239,6 +241,7 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
   final List<String> _suffixes = ["", "Ruined", "Fighting"];
   final Set<int> _invalidIndices = {};
   int _currentIndex = 0;
+  String? _previousUrl; // Track previous URL for seamless transitions
   Timer? _timer;
 
   @override
@@ -268,7 +271,12 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
 
     if (validIndices.isEmpty) return;
 
+    final currentSuffix = _suffixes[_currentIndex];
+    final currentUrl =
+        "${AppConfig.peopleImageBaseURL}/${widget.personName}$currentSuffix.png";
+
     setState(() {
+      _previousUrl = currentUrl; // Save current as previous
       final currentPos = validIndices.indexOf(_currentIndex);
       if (currentPos == -1) {
         _currentIndex = validIndices[0];
@@ -280,24 +288,37 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_invalidIndices.length == _suffixes.length) {
+      return const SizedBox.shrink();
+    }
+
     final suffix = _suffixes[_currentIndex];
     final url =
-        "https://peoplesystem.tatdvsonorth.com/images/people/${widget.personName}$suffix.png";
+        "${AppConfig.peopleImageBaseURL}/${widget.personName}$suffix.png";
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: CachedNetworkImage(
+    return _buildFrame(
+      CachedNetworkImage(
+        cacheManager: AssetCacheManager.shared.imageCache,
         imageUrl: url,
         height: widget.height,
         memCacheWidth: widget.cacheWidth,
         fit: widget.fit,
+        // Seamless transition: show previous image as placeholder
         placeholder:
             (context, url) =>
-                widget.showLoading
-                    ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                _previousUrl != null
+                    ? CachedNetworkImage(
+                      cacheManager: AssetCacheManager.shared.imageCache,
+                      imageUrl: _previousUrl!,
+                      height: widget.height,
+                      memCacheWidth: widget.cacheWidth,
+                      fit: widget.fit,
+                      placeholder: (context, url) => const SizedBox.shrink(),
+                      errorWidget: (context, url, error) => const SizedBox.shrink(),
                     )
-                    : const SizedBox.shrink(),
+                    : (widget.showLoading
+                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        : const SizedBox.shrink()),
         errorWidget: (context, url, error) {
           // If the image fails to load, mark it as invalid and show next one
           if (!_invalidIndices.contains(_currentIndex)) {
@@ -310,13 +331,20 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
               }
             });
           }
-
-          if (_invalidIndices.length == _suffixes.length) {
-            return const SizedBox.shrink();
-          }
-
-          return const SizedBox.shrink(); // Will show next one on next frame
+          return const SizedBox.shrink();
         },
+        fadeInDuration: const Duration(milliseconds: 500),
+        fadeOutDuration: const Duration(milliseconds: 500),
+      ),
+    );
+  }
+
+  Widget _buildFrame(Widget child) {
+    return SizedBox(
+      height: widget.height,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: child,
       ),
     );
   }

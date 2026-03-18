@@ -35,16 +35,20 @@ class VideoCardView extends StatelessWidget {
       child: Stack(
         alignment: Alignment.bottomRight,
         children: [
-          // Video Player or Thumbnail
-          if (isActive)
-            VideoPlayerView(videos: character.videos)
-          else
+          // Video Player
+          VideoPlayerView(
+            videos: character.videos,
+            isPaused: !isActive,
+          ),
+          
+          // Play icon overlay for inactive cards
+          if (!isActive)
             Container(
-              color: Colors.grey[900],
+              color: Colors.black26,
               child: const Center(
                 child: Icon(
                   Icons.play_circle_outline,
-                  color: Colors.white,
+                  color: Colors.white54,
                   size: 50,
                 ),
               ),

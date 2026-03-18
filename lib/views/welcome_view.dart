@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -18,14 +19,7 @@ class _WelcomeViewState extends State<WelcomeView>
   late Animation<double> _rippleScale;
   late Animation<double> _rippleOpacity;
 
-  // Gang video URLs matching palais.astro
-  final List<String> _gangVideoUrls = [
-    'https://peoplesystem.tatdvsonorth.com/images/people/gangHagisun.mp4',
-    'https://peoplesystem.tatdvsonorth.com/images/people/gangHagishi.mp4',
-    'https://peoplesystem.tatdvsonorth.com/images/people/gangPhoenix.mp4',
-    'https://peoplesystem.tatdvsonorth.com/images/people/gangRegalos.mp4',
-    'https://peoplesystem.tatdvsonorth.com/images/people/gangRapeum.mp4',
-  ];
+  // Gang video URLs are now managed by the viewmodel for consistent caching
 
   List<VideoPlayerController> _videoControllers = [];
   List<bool> _videoInitialized = [];
@@ -64,35 +58,58 @@ class _WelcomeViewState extends State<WelcomeView>
 
     _dropController.forward();
 
-    // Initialize video controllers
-    _videoInitialized = List.filled(_gangVideoUrls.length, false);
-    for (int i = 0; i < _gangVideoUrls.length; i++) {
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(_gangVideoUrls[i]),
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-      );
-      _videoControllers.add(controller);
+    final viewModel = Provider.of<DanceViewModel>(context, listen: false);
+    final urls = viewModel.gangVideoUrls;
 
-      controller
-          .initialize()
-          .then((_) {
-            if (mounted) {
-              setState(() {
-                _videoInitialized[i] = true;
-              });
-              controller.setLooping(true);
-              controller.setVolume(0.0); // Muted
-              controller.play();
-            }
-          })
-          .catchError((error) {
-            // Hide video on error (matching palais.astro behavior)
-            if (mounted) {
-              setState(() {
-                _videoInitialized[i] = false;
-              });
-            }
-          });
+    // Initialize video controllers
+    _videoInitialized = List.filled(urls.length, false);
+    for (int i = 0; i < urls.length; i++) {
+      final url = urls[i];
+      _initializeController(i, url, viewModel);
+    }
+  }
+
+  Future<void> _initializeController(
+    int index,
+    String url,
+    DanceViewModel viewModel,
+  ) async {
+    final cachedPath = await viewModel.getCachedVideoPath(url);
+    final controller =
+        cachedPath != null
+            ? VideoPlayerController.file(
+              File(cachedPath),
+              videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+            )
+            : VideoPlayerController.networkUrl(
+              Uri.parse(url),
+              videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+            );
+
+    if (!mounted) {
+      await controller.dispose();
+      return;
+    }
+
+    _videoControllers.add(controller);
+
+    try {
+      await controller.initialize();
+      if (mounted) {
+        setState(() {
+          _videoInitialized[index] = true;
+        });
+        await controller.setLooping(true);
+        await controller.setVolume(0.0); // Muted
+        await controller.play();
+      }
+    } catch (error) {
+      print("Error initializing video $url: $error");
+      if (mounted) {
+        setState(() {
+          _videoInitialized[index] = false;
+        });
+      }
     }
   }
 
@@ -122,149 +139,177 @@ class _WelcomeViewState extends State<WelcomeView>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Gang Video Container (matching palais.astro)
-              Container(
-                height: 540,
-                margin: const EdgeInsets.only(bottom: 40),
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  itemCount: _gangVideoUrls.length,
-                  itemBuilder: (context, index) {
-                    if (!_videoInitialized[index]) {
-                      return const SizedBox.shrink(); // Hide on error
-                    }
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Gang Video Container (matching palais.astro)
+                  Container(
+                    height: 540,
+                    margin: const EdgeInsets.only(bottom: 40),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      itemCount: viewModel.gangVideoUrls.length,
+                      itemBuilder: (context, index) {
+                        if (index >= _videoInitialized.length ||
+                            !_videoInitialized[index]) {
+                          return const SizedBox.shrink(); // Loading or Hide on error
+                        }
 
-                    return Container(
-                      margin: EdgeInsets.only(
-                        right: index < _gangVideoUrls.length - 1 ? -10 : 0,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: AspectRatio(
-                          aspectRatio:
-                              _videoControllers[index].value.aspectRatio,
-                          child: VideoPlayer(_videoControllers[index]),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // Rapeum Branding
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Colors.blue, Colors.cyan],
-                ).createShader(bounds),
-                child: const Text(
-                  'Rapeum',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Serif',
-                    color: Colors.white,
-                    letterSpacing: 2.0,
-                    shadows: [Shadow(color: Colors.blueAccent, blurRadius: 10)],
+                        return Container(
+                          margin: EdgeInsets.only(
+                            right:
+                                index < viewModel.gangVideoUrls.length - 1
+                                    ? -10
+                                    : 0,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: AspectRatio(
+                              aspectRatio:
+                                  _videoControllers[index].value.aspectRatio,
+                              child: VideoPlayer(_videoControllers[index]),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 40),
 
-              // Interactive Water Drop Area
-              GestureDetector(
-                onTap: () => _startLoadingSequence(viewModel),
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Ripple Effect
-                      AnimatedBuilder(
-                        animation: _rippleController,
-                        builder: (context, child) {
-                          return Opacity(
-                            opacity: _rippleOpacity.value,
-                            child: Transform.scale(
-                              scale: _rippleScale.value,
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.blue.withValues(alpha: 0.5),
-                                    width: 2,
+                  // Rapeum Branding
+                  ShaderMask(
+                    shaderCallback:
+                        (bounds) => const LinearGradient(
+                          colors: [Colors.blue, Colors.cyan],
+                        ).createShader(bounds),
+                    child: const Text(
+                      'Rapeum',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Serif',
+                        color: Colors.white,
+                        letterSpacing: 2.0,
+                        shadows: [
+                          Shadow(color: Colors.blueAccent, blurRadius: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Interactive Water Drop Area
+                  GestureDetector(
+                    onTap: () => _startLoadingSequence(viewModel),
+                    child: SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Ripple Effect
+                          AnimatedBuilder(
+                            animation: _rippleController,
+                            builder: (context, child) {
+                              return Opacity(
+                                opacity: _rippleOpacity.value,
+                                child: Transform.scale(
+                                  scale: _rippleScale.value,
+                                  child: Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        width: 2,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            },
+                          ),
 
-                      // Water Drop
-                      AnimatedBuilder(
-                        animation: _dropController,
-                        builder: (context, child) {
-                          return Opacity(
-                            opacity: _dropOpacity.value,
-                            child: Transform.translate(
-                              offset: Offset(0, _dropOffset.value),
-                              child: const Icon(
-                                Icons.water_drop,
-                                size: 40,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          );
-                        },
+                          // Water Drop
+                          AnimatedBuilder(
+                            animation: _dropController,
+                            builder: (context, child) {
+                              return Opacity(
+                                opacity: _dropOpacity.value,
+                                child: Transform.translate(
+                                  offset: Offset(0, _dropOffset.value),
+                                  child: const Icon(
+                                    Icons.water_drop,
+                                    size: 40,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Tap to Enter',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 30),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.local_fire_department,
+                      size: 40,
+                      color: Colors.orange,
+                    ),
+                    onPressed: () {
+                      viewModel.enterGallery();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Reload Button in Top Right with SafeArea
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10, right: 10),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black26,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: Colors.white70,
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Clearing storage and reloading...'),
+                        ),
+                      );
+                      viewModel.reload();
+                    },
                   ),
                 ),
               ),
-
-              const SizedBox(height: 20),
-              const Text(
-                'Tap to Enter',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              const SizedBox(height: 30),
-              IconButton(
-                icon: const Icon(
-                  Icons.local_fire_department,
-                  size: 40,
-                  color: Colors.orange,
-                ),
-                onPressed: () {
-                  viewModel.enterGallery();
-                },
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(top: 40.0),
-        child: Align(
-          alignment: Alignment.topRight,
-          child: IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white54, size: 30),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Clearing storage and reloading...')),
-              );
-              viewModel.reload();
-            },
-          ),
-        ),
+        ],
       ),
     );
   }
