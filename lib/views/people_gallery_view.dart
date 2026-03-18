@@ -152,6 +152,7 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
                                 });
                               },
                               child: RotatingCharacterImage(
+                                key: ValueKey(person.name),
                                 personName: person.name,
                                 height: 300,
                                 cacheWidth: 600,
@@ -289,54 +290,110 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
   @override
   Widget build(BuildContext context) {
     if (_invalidIndices.length == _suffixes.length) {
-      return const SizedBox.shrink();
+      return _buildFrame(
+        Container(
+          color: Colors.white10,
+          child: const Center(
+            child: Icon(Icons.person_off, color: Colors.white24),
+          ),
+        ),
+      );
     }
 
-    final suffix = _suffixes[_currentIndex];
-    final url =
-        "${AppConfig.peopleImageBaseURL}/${widget.personName}$suffix.png";
+    // Always use the "Base" image (index 0) to define the layout width.
+    // If the base image is not current, we overlay the current one on top.
+    final baseImageUrl =
+        "${AppConfig.peopleImageBaseURL}/${widget.personName}.png";
+    final currentUrl =
+        "${AppConfig.peopleImageBaseURL}/${widget.personName}${_suffixes[_currentIndex]}.png";
 
     return _buildFrame(
-      CachedNetworkImage(
-        cacheManager: AssetCacheManager.shared.imageCache,
-        imageUrl: url,
-        height: widget.height,
-        memCacheWidth: widget.cacheWidth,
-        fit: widget.fit,
-        // Seamless transition: show previous image as placeholder
-        placeholder:
-            (context, url) =>
-                _previousUrl != null
-                    ? CachedNetworkImage(
-                      cacheManager: AssetCacheManager.shared.imageCache,
-                      imageUrl: _previousUrl!,
-                      height: widget.height,
-                      memCacheWidth: widget.cacheWidth,
-                      fit: widget.fit,
-                      placeholder: (context, url) => const SizedBox.shrink(),
-                      errorWidget: (context, url, error) => const SizedBox.shrink(),
-                    )
-                    : (widget.showLoading
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                        : const SizedBox.shrink()),
-        errorWidget: (context, url, error) {
-          // If the image fails to load, mark it as invalid and show next one
-          if (!_invalidIndices.contains(_currentIndex)) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _invalidIndices.add(_currentIndex);
-                  _nextImage();
-                });
-              }
-            });
-          }
-          return const SizedBox.shrink();
-        },
-        fadeInDuration: const Duration(milliseconds: 500),
-        fadeOutDuration: const Duration(milliseconds: 500),
+      Stack(
+        children: [
+          // Base Anchor: Defines the card's width in the horizontal list.
+          // We use fitHeight so width is dynamic based on image ratio.
+          Opacity(
+            opacity: _currentIndex == 0 ? 1.0 : 0.0,
+            child: CachedNetworkImage(
+              cacheManager: AssetCacheManager.shared.imageCache,
+              imageUrl: baseImageUrl,
+              height: widget.height,
+              memCacheWidth: widget.cacheWidth,
+              fit: BoxFit.fitHeight,
+              placeholder: (context, url) => const SizedBox.shrink(),
+              errorWidget: (context, url, error) => const SizedBox.shrink(),
+            ),
+          ),
+          // Current Overlay: Matches the base anchor's dimensions.
+          if (_currentIndex != 0)
+            Positioned.fill(
+              child: CachedNetworkImage(
+                cacheManager: AssetCacheManager.shared.imageCache,
+                imageUrl: currentUrl,
+                memCacheWidth: widget.cacheWidth,
+                fit: BoxFit.cover, // Cover the base anchor's area
+                placeholder:
+                    (context, url) =>
+                        _previousUrl != null
+                            ? CachedNetworkImage(
+                              cacheManager: AssetCacheManager.shared.imageCache,
+                              imageUrl: _previousUrl!,
+                              memCacheWidth: widget.cacheWidth,
+                              fit: BoxFit.cover,
+                            )
+                            : const SizedBox.shrink(),
+                errorWidget:
+                    (context, url, error) => _handleImageError(_currentIndex),
+              ),
+            ),
+          // Initial Loading / Error Handling for the Base Image itself
+          if (_currentIndex == 0)
+            _buildCurrentLoader(currentUrl),
+        ],
       ),
     );
+  }
+
+  Widget _buildCurrentLoader(String url) {
+    return CachedNetworkImage(
+      cacheManager: AssetCacheManager.shared.imageCache,
+      imageUrl: url,
+      height: widget.height,
+      memCacheWidth: widget.cacheWidth,
+      fit: BoxFit.fitHeight,
+      placeholder:
+          (context, url) =>
+              _previousUrl != null
+                  ? CachedNetworkImage(
+                    cacheManager: AssetCacheManager.shared.imageCache,
+                    imageUrl: _previousUrl!,
+                    height: widget.height,
+                    memCacheWidth: widget.cacheWidth,
+                    fit: BoxFit.fitHeight,
+                  )
+                  : (widget.showLoading
+                      ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                      : const SizedBox.shrink()),
+      errorWidget: (context, url, error) => _handleImageError(_currentIndex),
+      fadeInDuration: const Duration(milliseconds: 500),
+      fadeOutDuration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _handleImageError(int index) {
+    if (!_invalidIndices.contains(index)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _invalidIndices.add(index);
+            _nextImage();
+          });
+        }
+      });
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildFrame(Widget child) {

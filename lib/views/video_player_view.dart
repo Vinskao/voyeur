@@ -31,6 +31,10 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   String? _error;
   bool _isPlayingForward = true;
   bool _isDisposed = false;
+  
+  // Retry logic
+  int _retryCount = 0;
+  static const int _maxAutoRetries = 3;
 
   @override
   void initState() {
@@ -108,6 +112,10 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
           await controller.play();
         }
 
+        setState(() {
+          _retryCount = 0; // Reset on success
+        });
+
         _preloadNext();
       }
     } catch (e) {
@@ -115,14 +123,26 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       final errorMsg = "Failed to load ${video.filename}: $e";
       _logger.e(errorMsg);
       
+      // Proactively clear cache for the failing video
+      AssetCacheManager.shared.removeCachedVideo(video.url);
+
+      if (_retryCount < _maxAutoRetries) {
+        _logger.w("Auto-retry attempt ${_retryCount + 1} for ${video.filename}");
+        _retryCount++;
+        // Small delay before retry to let system resources settle
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (mounted && !_isDisposed) {
+            _initializeCurrentAndNext();
+          }
+        });
+        return;
+      }
+
       if (mounted) {
         setState(() {
           _error = errorMsg;
         });
       }
-
-      // Proactively clear cache for the failing video
-      AssetCacheManager.shared.removeCachedVideo(video.url);
     }
   }
 
@@ -252,6 +272,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     setState(() {
       _currentVideoIndex = nextIndex;
       _isPlayingForward = true;
+      _retryCount = 0; // Reset for new video
     });
 
     final newController = await _getControllerAtIndex(nextIndex);
@@ -296,6 +317,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: () {
+                  _retryCount = 0; // Reset on manual click
                   _disposeAllControllers();
                   _initializeCurrentAndNext();
                 },
