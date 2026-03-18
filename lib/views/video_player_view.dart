@@ -264,9 +264,13 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     final prevIndex = _currentVideoIndex;
     final nextIndex = (prevIndex + 1) % widget.videos.length;
 
+    // Await the new controller first to ensure it's ready before we switch the index in UI
+    final newController = await _getControllerAtIndex(nextIndex);
+
+    if (!mounted || _isDisposed) return;
+
     final oldController = _controllerPool[prevIndex];
     oldController?.removeListener(_boomerangListener);
-    // Keep in pool, but pause
     oldController?.pause();
 
     setState(() {
@@ -275,8 +279,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       _retryCount = 0; // Reset for new video
     });
 
-    final newController = await _getControllerAtIndex(nextIndex);
-    if (newController != null && mounted && !_isDisposed) {
+    if (newController != null) {
       newController.addListener(_boomerangListener);
       newController.play();
       _preloadNext();

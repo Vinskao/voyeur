@@ -290,14 +290,7 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
   @override
   Widget build(BuildContext context) {
     if (_invalidIndices.length == _suffixes.length) {
-      return _buildFrame(
-        Container(
-          color: Colors.white10,
-          child: const Center(
-            child: Icon(Icons.person_off, color: Colors.white24),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     // Always use the "Base" image (index 0) to define the layout width.
