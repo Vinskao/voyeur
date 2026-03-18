@@ -31,48 +31,40 @@ class VideoProber {
       return cached;
     }
 
+    // 2. Discover videos
     _logger.i("Probing videos for ${person.name}...");
     final String baseVideoPath = _constructBaseVideoURL();
     List<VideoResult> results = [];
+    final Set<String> seenUrls = {};
 
-    // 2. Check Main Video
-    final mainVideo = await _checkVideoExists(baseVideoPath, person.name, "");
-    if (mainVideo != null) {
-      results.add(mainVideo);
+    // Helper to add unique results
+    void addIfUnique(VideoResult? res) {
+      if (res != null && !seenUrls.contains(res.url)) {
+        results.add(res);
+        seenUrls.add(res.url);
+      }
     }
 
-    // 3. Check Numbered Videos
+    // A. Check Main Video (no suffix)
+    final mainVideo = await _checkVideoExists(baseVideoPath, person.name, "");
+    addIfUnique(mainVideo);
+
+    // B. Check suffix "1" (optional, doesn't break)
+    final video1 = await _checkVideoExists(baseVideoPath, person.name, "1");
+    addIfUnique(video1);
+
+    // C. Check Numbered Videos (2, 3, 4...)
+    // Must be consecutive starting from 2
     int currentIndex = 2;
-    int consecutiveMisses = 0;
-    const int batchSize = 5;
-
-    while (currentIndex <= maxIndex &&
-        consecutiveMisses < maxConsecutiveMisses) {
-      int endIndex = (currentIndex + batchSize - 1 < maxIndex)
-          ? currentIndex + batchSize - 1
-          : maxIndex;
-
-      List<Future<VideoResult?>> batchFutures = [];
-      for (int i = currentIndex; i <= endIndex; i++) {
-        batchFutures.add(
-          _checkVideoExists(baseVideoPath, person.name, i.toString()),
-        );
+    while (currentIndex <= maxIndex) {
+      final res = await _checkVideoExists(baseVideoPath, person.name, currentIndex.toString());
+      if (res != null) {
+        addIfUnique(res);
+        currentIndex++;
+      } else {
+        // Stop searching at first miss from index 2 onwards
+        break;
       }
-
-      final batchResults = await Future.wait(batchFutures);
-
-      for (var res in batchResults) {
-        if (res != null) {
-          results.add(res);
-          consecutiveMisses = 0;
-        } else {
-          consecutiveMisses++;
-        }
-
-        if (consecutiveMisses >= maxConsecutiveMisses) break;
-      }
-
-      currentIndex += batchSize;
     }
 
     // 4. Save to cache
@@ -99,6 +91,20 @@ class VideoProber {
       // Ignore head errors
     }
     return null;
+  }
+
+  /// Removes all locally-cached probe results from SharedPreferences.
+  Future<void> clearProbeCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith(_cachePrefix)).toList();
+      for (final k in keys) {
+        await prefs.remove(k);
+      }
+      _logger.i("Cleared ${keys.length} probe cache entries.");
+    } catch (e) {
+      _logger.e("Error clearing probe cache: $e");
+    }
   }
 
   Future<void> _cacheResults(String name, List<VideoResult> results) async {

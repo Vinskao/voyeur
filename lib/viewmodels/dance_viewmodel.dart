@@ -70,6 +70,17 @@ class DanceViewModel extends ChangeNotifier {
     scanForVideos();
   }
 
+  /// Clears ALL disk caches (videos, images, probe results) without
+  /// changing appState — the UI stays on whatever screen it's on.
+  Future<void> clearCacheOnly() async {
+    _logger.i("Clearing all caches (no navigation)...");
+    _characters = [];
+    _currentIndex = 0;
+    await _cacheManager.clearAllCache();
+    await _videoProber.clearProbeCache();
+    _logger.i("All caches cleared.");
+  }
+
   Future<void> scanForVideos() async {
     _setLoading(true, message: "Fetching character details...");
     _appState = AppState.loading;

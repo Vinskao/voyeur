@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../viewmodels/dance_viewmodel.dart';
 
 class WelcomeView extends StatefulWidget {
+  const WelcomeView({super.key});
   @override
   State<WelcomeView> createState() => _WelcomeViewState();
 }
@@ -19,10 +20,10 @@ class _WelcomeViewState extends State<WelcomeView>
   late Animation<double> _rippleScale;
   late Animation<double> _rippleOpacity;
 
-  // Gang video URLs are now managed by the viewmodel for consistent caching
-
-  List<VideoPlayerController> _videoControllers = [];
-  List<bool> _videoInitialized = [];
+  // Map ensures index→controller is always correct regardless of async order
+  final Map<int, VideoPlayerController> _videoControllers = {};
+  // Track which indices are fully initialized and ready to show
+  final Map<int, bool> _videoReady = {};
 
   @override
   void initState() {
@@ -32,7 +33,6 @@ class _WelcomeViewState extends State<WelcomeView>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-
     _dropOffset = Tween<double>(begin: -150, end: 0).animate(
       CurvedAnimation(parent: _dropController, curve: Curves.easeInOut),
     );
@@ -44,72 +44,95 @@ class _WelcomeViewState extends State<WelcomeView>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-
     _rippleScale = Tween<double>(begin: 0.5, end: 2.0).animate(
       CurvedAnimation(parent: _rippleController, curve: Curves.easeOut),
     );
-    _rippleOpacity =
-        TweenSequence<double>([
-          TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 80),
-        ]).animate(
-          CurvedAnimation(parent: _rippleController, curve: Curves.easeOut),
-        );
+    _rippleOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 80),
+    ]).animate(
+      CurvedAnimation(parent: _rippleController, curve: Curves.easeOut),
+    );
 
     _dropController.forward();
 
     final viewModel = Provider.of<DanceViewModel>(context, listen: false);
     final urls = viewModel.gangVideoUrls;
-
-    // Initialize video controllers
-    _videoInitialized = List.filled(urls.length, false);
     for (int i = 0; i < urls.length; i++) {
-      final url = urls[i];
-      _initializeController(i, url, viewModel);
+      _videoReady[i] = false;
+      _initVideo(i, urls[i], viewModel);
     }
   }
 
-  Future<void> _initializeController(
+  Future<void> _initVideo(
     int index,
     String url,
     DanceViewModel viewModel,
   ) async {
-    final cachedPath = await viewModel.getCachedVideoPath(url);
-    final controller =
-        cachedPath != null
-            ? VideoPlayerController.file(
+    try {
+      final cachedPath = await viewModel.getCachedVideoPath(url);
+      final controller = cachedPath != null
+          ? VideoPlayerController.file(
               File(cachedPath),
               videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
             )
-            : VideoPlayerController.networkUrl(
+          : VideoPlayerController.networkUrl(
               Uri.parse(url),
               videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
             );
 
-    if (!mounted) {
-      await controller.dispose();
-      return;
-    }
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
 
-    _videoControllers.add(controller);
+      // Store BEFORE initialize so the map slot is reserved
+      _videoControllers[index] = controller;
 
-    try {
       await controller.initialize();
+
+      if (!mounted) return;
+
+      setState(() {
+        _videoReady[index] = true;
+      });
+
+      await controller.setLooping(true);
+      await controller.setVolume(0.0);
+      await controller.play();
+    } catch (e) {
+      debugPrint('Error initializing gang video $url: $e');
       if (mounted) {
         setState(() {
-          _videoInitialized[index] = true;
-        });
-        await controller.setLooping(true);
-        await controller.setVolume(0.0); // Muted
-        await controller.play();
-      }
-    } catch (error) {
-      print("Error initializing video $url: $error");
-      if (mounted) {
-        setState(() {
-          _videoInitialized[index] = false;
+          _videoReady[index] = false;
         });
       }
+    }
+  }
+
+  /// Dispose all controllers and re-initialize (clears disk cache first).
+  /// appState is NOT changed — user stays on the welcome page.
+  Future<void> _reloadAll(DanceViewModel viewModel) async {
+    // Dispose current controllers
+    for (final c in _videoControllers.values) {
+      await c.dispose();
+    }
+    _videoControllers.clear();
+    _videoReady.clear();
+
+    // Clear ALL disk caches (videos + images + probe results)
+    // Does NOT call scanForVideos() — appState stays AppState.welcome
+    await viewModel.clearCacheOnly();
+
+    // Re-init gang videos (fresh download because cache was cleared)
+    final urls = viewModel.gangVideoUrls;
+    for (int i = 0; i < urls.length; i++) {
+      _videoReady[i] = false;
+    }
+    if (mounted) setState(() {});
+
+    for (int i = 0; i < urls.length; i++) {
+      _initVideo(i, urls[i], viewModel);
     }
   }
 
@@ -117,25 +140,24 @@ class _WelcomeViewState extends State<WelcomeView>
   void dispose() {
     _dropController.dispose();
     _rippleController.dispose();
-    for (var controller in _videoControllers) {
-      controller.dispose();
+    for (final c in _videoControllers.values) {
+      c.dispose();
     }
     super.dispose();
   }
 
   void _startLoadingSequence(DanceViewModel viewModel) {
     _rippleController.forward(from: 0);
-
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        viewModel.scanForVideos();
-      }
+      if (mounted) viewModel.scanForVideos();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<DanceViewModel>(context);
+    final totalVideos = viewModel.gangVideoUrls.length;
+    final readyCount = _videoReady.values.where((v) => v).length;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -146,46 +168,55 @@ class _WelcomeViewState extends State<WelcomeView>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Gang Video Container (matching palais.astro)
+                  // ── Gang Video Row ─────────────────────────────────────
                   Container(
                     height: 540,
                     margin: const EdgeInsets.only(bottom: 40),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                      itemCount: viewModel.gangVideoUrls.length,
-                      itemBuilder: (context, index) {
-                        if (index >= _videoInitialized.length ||
-                            !_videoInitialized[index]) {
-                          return const SizedBox.shrink(); // Loading or Hide on error
-                        }
-
-                        return Container(
-                          margin: EdgeInsets.only(
-                            right:
-                                index < viewModel.gangVideoUrls.length - 1
-                                    ? -10
-                                    : 0,
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: AspectRatio(
-                              aspectRatio:
-                                  _videoControllers[index].value.aspectRatio,
-                              child: VideoPlayer(_videoControllers[index]),
+                    child: readyCount == 0
+                        // Nothing loaded yet: show centred progress indicator
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white38,
+                              strokeWidth: 2,
                             ),
+                          )
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 40),
+                            itemCount: totalVideos,
+                            itemBuilder: (context, index) {
+                              final ready = _videoReady[index] ?? false;
+                              final controller =
+                                  _videoControllers[index];
+
+                              // Still loading this slot: empty gap
+                              if (!ready || controller == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return Container(
+                                margin: EdgeInsets.only(
+                                  right: index < totalVideos - 1 ? -10 : 0,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: AspectRatio(
+                                    aspectRatio:
+                                        controller.value.aspectRatio,
+                                    child: VideoPlayer(controller),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
 
-                  // Rapeum Branding
+                  // ── Rapeum Branding ────────────────────────────────────
                   ShaderMask(
-                    shaderCallback:
-                        (bounds) => const LinearGradient(
-                          colors: [Colors.blue, Colors.cyan],
-                        ).createShader(bounds),
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Colors.blue, Colors.cyan],
+                    ).createShader(bounds),
                     child: const Text(
                       'Rapeum',
                       style: TextStyle(
@@ -202,7 +233,7 @@ class _WelcomeViewState extends State<WelcomeView>
                   ),
                   const SizedBox(height: 40),
 
-                  // Interactive Water Drop Area
+                  // ── Water Drop Enter Button ────────────────────────────
                   GestureDetector(
                     onTap: () => _startLoadingSequence(viewModel),
                     child: SizedBox(
@@ -211,48 +242,39 @@ class _WelcomeViewState extends State<WelcomeView>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Ripple Effect
                           AnimatedBuilder(
                             animation: _rippleController,
-                            builder: (context, child) {
-                              return Opacity(
-                                opacity: _rippleOpacity.value,
-                                child: Transform.scale(
-                                  scale: _rippleScale.value,
-                                  child: Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        width: 2,
-                                      ),
+                            builder: (context, child) => Opacity(
+                              opacity: _rippleOpacity.value,
+                              child: Transform.scale(
+                                scale: _rippleScale.value,
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.blue.withValues(alpha: 0.5),
+                                      width: 2,
                                     ),
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
-
-                          // Water Drop
                           AnimatedBuilder(
                             animation: _dropController,
-                            builder: (context, child) {
-                              return Opacity(
-                                opacity: _dropOpacity.value,
-                                child: Transform.translate(
-                                  offset: Offset(0, _dropOffset.value),
-                                  child: const Icon(
-                                    Icons.water_drop,
-                                    size: 40,
-                                    color: Colors.blue,
-                                  ),
+                            builder: (context, child) => Opacity(
+                              opacity: _dropOpacity.value,
+                              child: Transform.translate(
+                                offset: Offset(0, _dropOffset.value),
+                                child: const Icon(
+                                  Icons.water_drop,
+                                  size: 40,
+                                  color: Colors.blue,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -271,15 +293,15 @@ class _WelcomeViewState extends State<WelcomeView>
                       size: 40,
                       color: Colors.orange,
                     ),
-                    onPressed: () {
-                      viewModel.enterGallery();
-                    },
+                    onPressed: () => viewModel.enterGallery(),
                   ),
                 ],
               ),
             ),
           ),
-          // Reload Button in Top Right with SafeArea
+
+          // ── Reload Button (top-right) ─────────────────────────────────
+          // Clears ALL disk cache (videos + images) and re-downloads everything
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
@@ -296,13 +318,16 @@ class _WelcomeViewState extends State<WelcomeView>
                       color: Colors.white70,
                       size: 30,
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Clearing storage and reloading...'),
+                          content: Text(
+                            'Clearing all cache and re-downloading...',
+                          ),
+                          duration: Duration(seconds: 3),
                         ),
                       );
-                      viewModel.reload();
+                      await _reloadAll(viewModel);
                     },
                   ),
                 ),

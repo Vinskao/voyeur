@@ -270,22 +270,6 @@ class _CardSwipeViewState extends State<CardSwipeView> {
             ),
           ),
 
-          // Reload Button
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: IconButton(
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  size: 50,
-                  color: Colors.white70,
-                ),
-                onPressed: () => viewModel.reload(),
-              ),
-            ),
-          ),
         ],
       ),
     );

@@ -36,7 +36,6 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
     try {
       final people = await PeopleService.shared.fetchPeople();
 
-      // Fetch batch damage (total power) and update people
       final damageResults = await PeopleService.shared.fetchBatchDamage(
         people.map((p) => p.name).toList(),
       );
@@ -71,7 +70,6 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
       grouped[key]!.add(p);
     }
 
-    // Sort each group by totalPower (Ascending: Weak to Strong)
     for (var key in grouped.keys) {
       grouped[key]!.sort(
         (a, b) => (a.totalPower ?? 0).compareTo(b.totalPower ?? 0),
@@ -85,7 +83,6 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
   Widget build(BuildContext context) {
     final groups = _groupedPeople;
 
-    // Sort army groups by the sum of totalPower (Highest to Lowest)
     final sortedKeys = groups.keys.toList()
       ..sort((a, b) {
         final sumA = groups[a]!.fold(0, (sum, p) => sum + (p.totalPower ?? 0));
@@ -178,7 +175,7 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
                   });
                 },
                 child: Container(
-                  color: Colors.black.withOpacity(0.9),
+                  color: Colors.black.withValues(alpha: 0.9),
                   child: Center(
                     child: RotatingCharacterImage(
                       personName: _selectedPerson!.name,
@@ -197,7 +194,7 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
             top: 50,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               child: IconButton(
                 icon: const Icon(Icons.chevron_left, color: Colors.white),
                 onPressed: () {
@@ -218,6 +215,11 @@ class _PeopleGalleryViewState extends State<PeopleGalleryView> {
   }
 }
 
+// ─── RotatingCharacterImage ──────────────────────────────────────────────────
+//
+// Uses IndexedStack so all 3 image variants are always in the widget tree.
+// Switching is just changing the index — no placeholder re-trigger, no flicker.
+//
 class RotatingCharacterImage extends StatefulWidget {
   final String personName;
   final double height;
@@ -239,16 +241,23 @@ class RotatingCharacterImage extends StatefulWidget {
 }
 
 class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
-  final List<String> _suffixes = ["", "Ruined", "Fighting"];
-  final Set<int> _invalidIndices = {};
-  int _currentIndex = 0;
-  String? _previousUrl; // Track previous URL for seamless transitions
+  // Suffixes for each image variant
+  static const List<String> _suffixes = ['', 'Ruined', 'Fighting'];
+
+  // Which indices have confirmed 404 / error
+  final Set<int> _failedIndices = {};
+
+  // Index currently shown in the IndexedStack
+  int _visibleIndex = 0;
+
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _startRotation();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _rotate();
+    });
   }
 
   @override
@@ -257,144 +266,79 @@ class _RotatingCharacterImageState extends State<RotatingCharacterImage> {
     super.dispose();
   }
 
-  void _startRotation() {
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!mounted) return;
-      _nextImage();
-    });
-  }
-
-  void _nextImage() {
-    final validIndices = [
+  void _rotate() {
+    final valid = [
       for (int i = 0; i < _suffixes.length; i++)
-        if (!_invalidIndices.contains(i)) i,
+        if (!_failedIndices.contains(i)) i,
     ];
+    if (valid.length <= 1) return; // Nothing to rotate to
 
-    if (validIndices.isEmpty) return;
-
-    final currentSuffix = _suffixes[_currentIndex];
-    final currentUrl =
-        "${AppConfig.peopleImageBaseURL}/${widget.personName}$currentSuffix.png";
+    final currentPos = valid.indexOf(_visibleIndex);
+    final nextPos =
+        currentPos == -1 ? 0 : (currentPos + 1) % valid.length;
 
     setState(() {
-      _previousUrl = currentUrl; // Save current as previous
-      final currentPos = validIndices.indexOf(_currentIndex);
-      if (currentPos == -1) {
-        _currentIndex = validIndices[0];
-      } else {
-        _currentIndex = validIndices[(currentPos + 1) % validIndices.length];
-      }
+      _visibleIndex = valid[nextPos];
     });
   }
+
+  void _markFailed(int index) {
+    if (_failedIndices.contains(index)) return;
+    // Must schedule outside build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _failedIndices.add(index);
+        // If current index just failed, jump to next valid
+        if (_visibleIndex == index) _rotate();
+      });
+    });
+  }
+
+  String _url(int index) =>
+      '${AppConfig.peopleImageBaseURL}/${widget.personName}${_suffixes[index]}.png';
 
   @override
   Widget build(BuildContext context) {
-    if (_invalidIndices.length == _suffixes.length) {
+    // If ALL images failed, show nothing
+    if (_failedIndices.length >= _suffixes.length) {
       return const SizedBox.shrink();
     }
 
-    // Always use the "Base" image (index 0) to define the layout width.
-    // If the base image is not current, we overlay the current one on top.
-    final baseImageUrl =
-        "${AppConfig.peopleImageBaseURL}/${widget.personName}.png";
-    final currentUrl =
-        "${AppConfig.peopleImageBaseURL}/${widget.personName}${_suffixes[_currentIndex]}.png";
-
-    return _buildFrame(
-      Stack(
-        children: [
-          // Base Anchor: Defines the card's width in the horizontal list.
-          // We use fitHeight so width is dynamic based on image ratio.
-          Opacity(
-            opacity: _currentIndex == 0 ? 1.0 : 0.0,
-            child: CachedNetworkImage(
-              cacheManager: AssetCacheManager.shared.imageCache,
-              imageUrl: baseImageUrl,
-              height: widget.height,
-              memCacheWidth: widget.cacheWidth,
-              fit: BoxFit.fitHeight,
-              placeholder: (context, url) => const SizedBox.shrink(),
-              errorWidget: (context, url, error) => const SizedBox.shrink(),
-            ),
-          ),
-          // Current Overlay: Matches the base anchor's dimensions.
-          if (_currentIndex != 0)
-            Positioned.fill(
-              child: CachedNetworkImage(
-                cacheManager: AssetCacheManager.shared.imageCache,
-                imageUrl: currentUrl,
-                memCacheWidth: widget.cacheWidth,
-                fit: BoxFit.cover, // Cover the base anchor's area
-                placeholder:
-                    (context, url) =>
-                        _previousUrl != null
-                            ? CachedNetworkImage(
-                              cacheManager: AssetCacheManager.shared.imageCache,
-                              imageUrl: _previousUrl!,
-                              memCacheWidth: widget.cacheWidth,
-                              fit: BoxFit.cover,
-                            )
-                            : const SizedBox.shrink(),
-                errorWidget:
-                    (context, url, error) => _handleImageError(_currentIndex),
-              ),
-            ),
-          // Initial Loading / Error Handling for the Base Image itself
-          if (_currentIndex == 0)
-            _buildCurrentLoader(currentUrl),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentLoader(String url) {
-    return CachedNetworkImage(
-      cacheManager: AssetCacheManager.shared.imageCache,
-      imageUrl: url,
-      height: widget.height,
-      memCacheWidth: widget.cacheWidth,
-      fit: BoxFit.fitHeight,
-      placeholder:
-          (context, url) =>
-              _previousUrl != null
-                  ? CachedNetworkImage(
-                    cacheManager: AssetCacheManager.shared.imageCache,
-                    imageUrl: _previousUrl!,
-                    height: widget.height,
-                    memCacheWidth: widget.cacheWidth,
-                    fit: BoxFit.fitHeight,
-                  )
-                  : (widget.showLoading
-                      ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      )
-                      : const SizedBox.shrink()),
-      errorWidget: (context, url, error) => _handleImageError(_currentIndex),
-      fadeInDuration: const Duration(milliseconds: 500),
-      fadeOutDuration: const Duration(milliseconds: 500),
-    );
-  }
-
-  Widget _handleImageError(int index) {
-    if (!_invalidIndices.contains(index)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _invalidIndices.add(index);
-            _nextImage();
-          });
-        }
-      });
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildFrame(Widget child) {
     return SizedBox(
       height: widget.height,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: child,
+        // IndexedStack keeps all children alive — only renders the one at [index]
+        child: IndexedStack(
+          index: _visibleIndex,
+          children: List.generate(_suffixes.length, (i) {
+            // Slot that is known-bad: invisible placeholder to keep layout
+            if (_failedIndices.contains(i)) {
+              return const SizedBox.shrink();
+            }
+
+            return CachedNetworkImage(
+              cacheManager: AssetCacheManager.shared.imageCache,
+              imageUrl: _url(i),
+              height: widget.height,
+              memCacheWidth: widget.cacheWidth,
+              fit: widget.fit,
+              // No fade: images are pre-loaded in-tree; fade = flicker
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholder: (context, url) => widget.showLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
+                  : const SizedBox.shrink(),
+              errorWidget: (context, url, error) {
+                _markFailed(i);
+                return const SizedBox.shrink();
+              },
+            );
+          }),
+        ),
       ),
     );
   }
