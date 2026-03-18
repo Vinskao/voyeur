@@ -272,6 +272,8 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     final oldController = _controllerPool[prevIndex];
     oldController?.removeListener(_boomerangListener);
     oldController?.pause();
+    // Reset old controller to start so next cycle plays from the beginning
+    await oldController?.seekTo(Duration.zero);
 
     setState(() {
       _currentVideoIndex = nextIndex;
@@ -280,8 +282,12 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     });
 
     if (newController != null) {
+      // Always seek to start to guarantee a clean playback state
+      await newController.seekTo(Duration.zero);
       newController.addListener(_boomerangListener);
-      newController.play();
+      if (!widget.isPaused) {
+        newController.play();
+      }
       _preloadNext();
     }
   }
