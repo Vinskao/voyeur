@@ -31,10 +31,13 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   String? _error;
   bool _isDisposed = false;
 
-  // Boomerang state
-  bool _isPlayingForward = true;
+  // Playback phase
+  bool _isReversing = false;
   bool _isSwitching = false;
-  bool _endDetected = false;
+
+  // Reverse playback
+  Timer? _reverseTimer;
+  static const Duration _reverseStep = Duration(milliseconds: 33); // ~30fps
 
   int _retryCount = 0;
   static const int _maxAutoRetries = 3;
@@ -59,8 +62,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       _disposeAll();
       _currentVideoIndex = 0;
       _isSwitching = false;
-      _endDetected = false;
-      _isPlayingForward = true;
+      _isReversing = false;
       _initCurrent();
       return;
     }
@@ -69,8 +71,13 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     if (widget.isPaused != oldWidget.isPaused) {
       if (widget.isPaused) {
         _currentController?.pause();
-      } else if (_isInitialized && _isPlayingForward) {
-        _currentController?.play();
+        _reverseTimer?.cancel();
+      } else if (_isInitialized) {
+        if (_isReversing) {
+          _startReverseTimer();
+        } else {
+          _currentController?.play();
+        }
       }
     }
   }
@@ -79,7 +86,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
   Future<VideoPlayerController> _buildController(int index) async {
     if (index >= widget.videos.length) throw 'Index out of bounds';
-    
+
     final video = widget.videos[index];
     final cachedPath =
         await AssetCacheManager.shared.getCachedVideoPath(video.url);
@@ -93,7 +100,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
     await ctrl.initialize();
     await ctrl.setVolume(0.0);
-    await ctrl.setLooping(false); 
+    await ctrl.setLooping(false); // Never native loop — we control all phases
     return ctrl;
   }
 
@@ -102,13 +109,15 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
   Future<void> _initCurrent() async {
     if (widget.videos.isEmpty) return;
 
+    _reverseTimer?.cancel();
+    _reverseTimer = null;
+
     if (mounted) {
       setState(() {
         _isInitialized = false;
         _error = null;
         _isSwitching = false;
-        _endDetected = false;
-        _isPlayingForward = true;
+        _isReversing = false;
       });
     }
 
@@ -120,21 +129,22 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
         return;
       }
 
-      _currentController?.removeListener(_onProgress);
+      _currentController?.removeListener(_onForwardProgress);
       await _currentController?.dispose();
 
       _currentController = ctrl;
-      _currentController!.addListener(_onProgress);
+      _currentController!.addListener(_onForwardProgress);
+
+      await _currentController!.seekTo(Duration.zero);
+      if (!widget.isPaused) {
+        await _currentController!.play();
+      }
 
       if (mounted) {
         setState(() {
           _isInitialized = true;
           _retryCount = 0;
         });
-      }
-
-      if (!widget.isPaused) {
-        await _currentController!.play();
       }
 
       _preloadNext();
@@ -174,70 +184,78 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
   }
 
-  // ── Listener: Forward Progress ─────────────────────────────────────────────
+  // ── Phase 1: Forward playback listener ────────────────────────────────────
 
-  void _onProgress() {
+  void _onForwardProgress() {
     final ctrl = _currentController;
     if (ctrl == null || !ctrl.value.isInitialized) return;
-    if (_isSwitching || _endDetected || !_isPlayingForward) return;
+    if (_isSwitching || _isReversing) return;
 
     final pos = ctrl.value.position;
     final dur = ctrl.value.duration;
     if (dur == Duration.zero) return;
 
-    // Detect end of forward playback
     final exactEnd = pos >= dur;
     final nearEnd = pos >= dur - const Duration(milliseconds: 300);
     final stopped = !ctrl.value.isPlaying && !ctrl.value.isBuffering;
 
     if (exactEnd || (nearEnd && stopped)) {
-      _endDetected = true;
-      _logger.i('End of forward: [${widget.videos[_currentVideoIndex].filename}]. Starting reverse...');
+      _logger.i('Forward end: [${widget.videos[_currentVideoIndex].filename}]. Starting reverse...');
       _startReverse();
     }
   }
 
-  // ── Reverse Playback (Boomerang) ───────────────────────────────────────────
+  // ── Phase 2: Start reverse playback ───────────────────────────────────────
 
   void _startReverse() async {
+    if (_isReversing || _isSwitching || _isDisposed || !mounted) return;
+    _isReversing = true;
+
     final ctrl = _currentController;
-    if (ctrl == null || _isDisposed || !mounted) return;
+    if (ctrl == null) return;
 
+    // Pause the player — we drive position manually
     await ctrl.pause();
-    
-    if (_isDisposed || !mounted) return;
+    ctrl.removeListener(_onForwardProgress);
 
-    setState(() {
-      _isPlayingForward = false;
-    });
+    // Seek to the exact end to begin reversing from there
+    final dur = ctrl.value.duration;
+    await ctrl.seekTo(dur);
 
-    // Manual reverse loop - seek backwards by frames
-    const step = Duration(milliseconds: 100);
-    const interval = Duration(milliseconds: 40);
-    Duration pos = ctrl.value.duration;
+    if (!widget.isPaused) {
+      _startReverseTimer();
+    }
+  }
 
-    while (!_isPlayingForward && !_isDisposed && mounted && pos > Duration.zero) {
-      // If widget is currently paused, wait before seeking
-      if (widget.isPaused) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        continue;
-      }
+  void _startReverseTimer() {
+    _reverseTimer?.cancel();
+    _reverseTimer = Timer.periodic(_reverseStep, _onReverseTick);
+  }
 
-      pos -= step;
-      if (pos < Duration.zero) pos = Duration.zero;
-      
-      await ctrl.seekTo(pos);
-      await Future.delayed(interval);
-      
-      // Safety check: if controller changed, abort
-      if (_currentController != ctrl) return;
+  void _onReverseTick(Timer timer) async {
+    if (_isDisposed || !mounted) {
+      timer.cancel();
+      return;
     }
 
-    // Finished reverse loop naturally?
-    if (!_isPlayingForward && !_isDisposed && mounted && _currentController == ctrl) {
-      _logger.i('End of reverse: [${widget.videos[_currentVideoIndex].filename}]. Switching...');
+    final ctrl = _currentController;
+    if (ctrl == null || !ctrl.value.isInitialized) {
+      timer.cancel();
+      return;
+    }
+
+    final pos = ctrl.value.position;
+
+    if (pos <= Duration.zero) {
+      timer.cancel();
+      _reverseTimer = null;
+      _logger.i('Reverse end: [${widget.videos[_currentVideoIndex].filename}]. Switching to next...');
       _switchToNext();
+      return;
     }
+
+    final newPos = pos - _reverseStep;
+    await ctrl.seekTo(newPos < Duration.zero ? Duration.zero : newPos);
   }
 
   // ── Switch to Next ─────────────────────────────────────────────────────────
@@ -246,11 +264,14 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     if (_isSwitching || _isDisposed || !mounted) return;
     _isSwitching = true;
 
+    _reverseTimer?.cancel();
+    _reverseTimer = null;
+
     final prevCtrl = _currentController;
-    prevCtrl?.removeListener(_onProgress);
-    
+    prevCtrl?.removeListener(_onForwardProgress);
+
     final nextIndex = (_currentVideoIndex + 1) % widget.videos.length;
-    _logger.i('Next index: $nextIndex');
+    _logger.i('Switching to index: $nextIndex');
 
     VideoPlayerController? newCtrl;
 
@@ -264,10 +285,10 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
         newCtrl = await _buildController(nextIndex);
       } catch (e) {
         _logger.e('Failed next load: $e');
-        _currentController?.addListener(_onProgress);
-        _endDetected = false;
+        // Restart current video from beginning as fallback
+        _isReversing = false;
         _isSwitching = false;
-        _isPlayingForward = true;
+        _currentController?.addListener(_onForwardProgress);
         await _currentController?.seekTo(Duration.zero);
         if (!widget.isPaused) await _currentController?.play();
         return;
@@ -280,21 +301,20 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
       return;
     }
 
+    await newCtrl!.seekTo(Duration.zero);
+    if (!widget.isPaused) {
+      await newCtrl.play();
+    }
+
     _currentController = newCtrl;
     _currentVideoIndex = nextIndex;
-    _endDetected = false;
-    _isPlayingForward = true;
-    _currentController!.addListener(_onProgress);
+    _isReversing = false;
+    _currentController!.addListener(_onForwardProgress);
 
     if (mounted) {
       setState(() {
         _isSwitching = false;
       });
-    }
-
-    await _currentController!.seekTo(Duration.zero);
-    if (!widget.isPaused) {
-      await _currentController!.play();
     }
 
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -304,11 +324,12 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     _preloadNext();
   }
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
+  // ── Cleanup ────────────────────────────────────────────────────────────────
 
   void _disposeAll() {
-    _isPlayingForward = true; // stop loops
-    _currentController?.removeListener(_onProgress);
+    _reverseTimer?.cancel();
+    _reverseTimer = null;
+    _currentController?.removeListener(_onForwardProgress);
     _currentController?.dispose();
     _currentController = null;
     _nextController?.dispose();
@@ -331,7 +352,9 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
           children: [
             const Icon(Icons.error_outline, color: Colors.redAccent, size: 30),
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            Text(_error!,
+                style:
+                    const TextStyle(color: Colors.redAccent, fontSize: 12)),
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: _initCurrent,
